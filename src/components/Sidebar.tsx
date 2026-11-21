@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 
 const navItems: Array<{ id: Section; label: string; icon: ComponentProps<typeof Icon>["name"] }> = [
   { id: "home", label: "Главная", icon: "home" },
-  { id: "timer", label: "Установить таймер", icon: "timer" },
+  { id: "timer", label: "Таймер", icon: "timer" },
   { id: "stats", label: "Статистика", icon: "chart" },
   { id: "settings", label: "Настройки", icon: "settings" },
 ];
@@ -33,9 +33,11 @@ export default function Sidebar({
         <span>Фокус</span>
       </div>
 
+      <p className="nav-caption">Рабочее пространство</p>
       <nav aria-label="Основная навигация" className="navigation">
         {navItems.map((item) => (
           <button
+            aria-label={item.label}
             aria-current={active === item.id ? "page" : undefined}
             className={`nav-item ${active === item.id ? "nav-item--active" : ""}`}
             key={item.id}

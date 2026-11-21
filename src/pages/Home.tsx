@@ -30,10 +30,18 @@ export default function Home({
           <p className="subtitle">Небольшой шаг к важной цели начинается с фокуса.</p>
         </div>
         <div aria-label="Состояние главной" className="segmented">
-          <button className={!empty ? "active" : ""} onClick={() => setEmpty(false)}>
+          <button
+            aria-pressed={!empty}
+            className={!empty ? "active" : ""}
+            onClick={() => setEmpty(false)}
+          >
             С данными
           </button>
-          <button className={empty ? "active" : ""} onClick={() => setEmpty(true)}>
+          <button
+            aria-pressed={empty}
+            className={empty ? "active" : ""}
+            onClick={() => setEmpty(true)}
+          >
             Пусто
           </button>
         </div>
@@ -52,6 +60,31 @@ export default function Home({
         </section>
       ) : (
         <>
+          <section className="focus-hero">
+            <div className="focus-hero__copy">
+              <p className="eyebrow">ВАШЕ ВРЕМЯ. ВАШ РИТМ.</p>
+              <h2>
+                Меньше шума.
+                <br />
+                Больше фокуса.
+              </h2>
+              <p>
+                Оставьте место для главного.
+                <br />
+                Одна задача и немного времени для себя.
+              </p>
+              <AppButton onClick={openTimer}>
+                <Icon name="play" size={18} /> Начать сессию
+              </AppButton>
+            </div>
+            <div className="hero-dial" aria-hidden="true">
+              <div>
+                <span>ФОКУС</span>
+                <strong>25:00</strong>
+                <span>МИНУТ ДЛЯ ГЛАВНОГО</span>
+              </div>
+            </div>
+          </section>
           <section aria-label="Краткая статистика" className="metric-grid">
             <article className="metric-card metric-card--accent">
               <div className="metric-card__icon">

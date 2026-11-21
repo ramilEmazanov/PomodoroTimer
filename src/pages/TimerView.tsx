@@ -55,6 +55,17 @@ export default function TimerView({
             <div className="setup-icon">
               <Icon name="timer" size={30} />
             </div>
+            <div className="duration-presets" aria-label="Быстрый выбор длительности">
+              {[15, 25, 45, 60].map((minutes) => (
+                <button
+                  key={minutes}
+                  aria-pressed={input === String(minutes)}
+                  onClick={() => setInput(String(minutes))}
+                >
+                  {minutes} мин
+                </button>
+              ))}
+            </div>
             <div className="field-group">
               <label htmlFor="duration">Длительность, мин</label>
               <input

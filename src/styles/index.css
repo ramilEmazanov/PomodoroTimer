@@ -3,8 +3,8 @@
 :root {
   font-family:
     -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, sans-serif;
-  color: #1f2733;
-  background: #eef1f5;
+  color: #1d1d1f;
+  background: #f5f5f7;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -13,8 +13,7 @@
   body {
     min-width: 320px;
     min-height: 100vh;
-    background:
-      radial-gradient(circle at 82% 8%, rgba(255, 255, 255, 0.9), transparent 28rem), #eef1f5;
+    background: radial-gradient(ellipse at 0% 100%, #e2eaf5 0, transparent 55%), #f5f5f7;
   }
 
   button,
@@ -37,7 +36,7 @@
 
 .app-shell {
   display: grid;
-  grid-template-columns: 252px minmax(0, 1fr);
+  grid-template-columns: 232px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -46,11 +45,11 @@
   inset: 0 auto 0 0;
   z-index: 10;
   display: flex;
-  width: 252px;
+  width: 232px;
   flex-direction: column;
   border-right: 1px solid rgba(45, 55, 72, 0.1);
-  background: rgba(244, 246, 249, 0.82);
-  padding: 20px 14px 18px;
+  background: rgba(232, 234, 239, 0.72);
+  padding: 26px 16px 22px;
   backdrop-filter: blur(28px) saturate(1.2);
 }
 
@@ -82,9 +81,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 13px 8px 28px;
+  margin: 24px 9px 36px;
   color: #171d26;
-  font-size: 17px;
+  font-size: 21px;
   font-weight: 650;
   letter-spacing: -0.02em;
 }
@@ -126,8 +125,8 @@
 }
 
 .nav-item--active {
-  background: rgba(255, 255, 255, 0.94);
-  color: #0768d7;
+  background: #007aff;
+  color: white;
   box-shadow:
     0 1px 3px rgba(32, 45, 64, 0.09),
     inset 0 0 0 1px rgba(255, 255, 255, 0.8);
@@ -185,14 +184,14 @@ main {
 }
 
 .page {
-  width: min(100%, 1188px);
+  width: min(100%, 1256px);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 74px clamp(40px, 6vw, 92px) 60px;
+  padding: 54px clamp(28px, 4.5vw, 72px) 48px;
 }
 
 .page-header {
-  margin-bottom: 38px;
+  margin-bottom: 30px;
 }
 
 .page-header--split {
@@ -213,7 +212,7 @@ main {
 
 .page-header h1 {
   color: #151c25;
-  font-size: clamp(30px, 3vw, 40px);
+  font-size: clamp(28px, 2.7vw, 36px);
   font-weight: 670;
   letter-spacing: -0.042em;
   line-height: 1.12;
@@ -252,7 +251,7 @@ main {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: 1.25fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 15px;
   margin-bottom: 16px;
 }
@@ -263,18 +262,18 @@ main {
 .placeholder-card,
 .empty-state {
   border: 1px solid rgba(51, 63, 80, 0.08);
-  background: rgba(255, 255, 255, 0.88);
+  background: #fff;
   box-shadow:
     0 2px 3px rgba(36, 48, 65, 0.025),
-    0 14px 32px rgba(45, 57, 75, 0.045);
+    0 6px 22px rgba(45, 57, 75, 0.025);
 }
 
 .metric-card {
   display: flex;
-  min-height: 154px;
+  min-height: 148px;
   gap: 15px;
-  border-radius: 16px;
-  padding: 23px 21px;
+  border-radius: 22px;
+  padding: 23px 20px;
 }
 
 .metric-card--accent {
@@ -312,13 +311,13 @@ main {
 .metric-card span {
   display: block;
   margin-top: 10px;
-  color: #8a94a0;
+  color: #6e7784;
   font-size: 11px;
   line-height: 1.35;
 }
 
 .content-card {
-  border-radius: 17px;
+  border-radius: 22px;
 }
 
 .section-heading {
@@ -340,19 +339,19 @@ main {
 
 .section-heading p {
   margin-top: 3px;
-  color: #8a94a1;
+  color: #6e7784;
   font-size: 12px;
 }
 
 .button {
   display: inline-flex;
-  min-height: 38px;
+  min-height: 40px;
   align-items: center;
   justify-content: center;
   gap: 7px;
   border: 1px solid transparent;
-  border-radius: 9px;
-  padding: 8px 16px;
+  border-radius: 999px;
+  padding: 10px 19px;
   font-size: 13px;
   font-weight: 600;
   transition:
@@ -366,7 +365,7 @@ main {
 }
 
 .button--primary {
-  background: linear-gradient(#1479e9, #0669d6);
+  background: #007aff;
   color: white;
   box-shadow:
     0 1px 1px rgba(0, 54, 120, 0.17),
@@ -374,12 +373,12 @@ main {
 }
 
 .button--primary:hover {
-  background: linear-gradient(#2183ef, #0a70df);
+  background: #006ee6;
 }
 
 .button--secondary {
   border-color: rgba(48, 60, 78, 0.13);
-  background: rgba(255, 255, 255, 0.88);
+  background: #fff;
   color: #3a4553;
   box-shadow: 0 1px 2px rgba(36, 48, 65, 0.06);
 }
@@ -389,8 +388,8 @@ main {
 }
 
 .button--danger {
-  background: #df3e3e;
-  color: white;
+  background: #ffe5e5;
+  color: #c62e28;
   box-shadow: 0 4px 10px rgba(196, 41, 41, 0.18);
 }
 
@@ -435,7 +434,7 @@ main {
 }
 
 .task__duration {
-  color: #8d97a3;
+  color: #6e7784;
   font-size: 12px;
 }
 
@@ -480,7 +479,7 @@ main {
 
 .timer-card {
   min-height: 550px;
-  border-radius: 20px;
+  border-radius: 30px;
 }
 
 .timer-setup {
@@ -529,7 +528,7 @@ main {
 }
 
 .field-hint {
-  color: #89939f;
+  color: #6e7784;
 }
 .field-error {
   color: #c93333;
@@ -617,11 +616,11 @@ main {
 
 .timer-readout time {
   color: #171e27;
-  font-family: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
-  font-size: clamp(40px, 5vw, 60px);
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: clamp(46px, 6vw, 72px);
   font-variant-numeric: tabular-nums;
   font-weight: 500;
-  letter-spacing: -0.07em;
+  letter-spacing: -0.055em;
   line-height: 1.05;
 }
 
@@ -661,7 +660,7 @@ main {
 .dialog {
   width: min(100%, 386px);
   border: 1px solid rgba(255, 255, 255, 0.7);
-  border-radius: 17px;
+  border-radius: 22px;
   background: rgba(250, 251, 252, 0.97);
   padding: 27px 27px 22px;
   text-align: center;
@@ -787,5 +786,364 @@ main {
   .timer-setup,
   .timer-active {
     min-height: 510px;
+  }
+}
+
+/* Shared materials and responsive composition. */
+.nav-caption {
+  margin: 0 11px 10px;
+  color: #737680;
+  font-size: 11px;
+  font-weight: 600;
+}
+.nav-item {
+  min-height: 42px;
+}
+.nav-item--active:hover {
+  background: #0071ed;
+  color: white;
+}
+.nav-item:active,
+.segmented button:active,
+.duration-presets button:active {
+  transform: scale(0.97);
+}
+.nav-item,
+.segmented button,
+.duration-presets button {
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 100ms ease;
+}
+.focus-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  overflow: hidden;
+  margin-bottom: 22px;
+  padding: 36px 42px;
+  border: 1px solid #fff;
+  border-radius: 28px;
+  background:
+    radial-gradient(ellipse at 95% 100%, #d5e5fc, transparent 65%),
+    linear-gradient(115deg, #fff 10%, #edf3fc);
+  box-shadow: 0 8px 30px #233e6610;
+}
+.focus-hero .eyebrow {
+  color: #54749a;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+.focus-hero h2 {
+  color: #1d1d1f;
+  font-size: clamp(30px, 3vw, 42px);
+  font-weight: 650;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+.focus-hero__copy > p:not(.eyebrow) {
+  margin: 16px 0 23px;
+  font-size: 14px;
+  color: #667183;
+  line-height: 1.6;
+}
+.hero-dial {
+  display: grid;
+  flex: 0 0 auto;
+  width: 224px;
+  aspect-ratio: 1;
+  padding: 8px;
+  border-radius: 50%;
+  background: conic-gradient(from 20deg, #007aff 0 78%, #d9e5f6 78%);
+  box-shadow: 0 16px 36px #3767aa14;
+}
+.hero-dial > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 7px solid #edf4fd;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #fff, #eaf2ff);
+}
+.hero-dial strong {
+  margin: 5px 0;
+  color: #253d5b;
+  font-size: 52px;
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+.hero-dial span {
+  color: #647a95;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+.metric-card {
+  position: relative;
+  flex-direction: column;
+  gap: 12px;
+}
+.metric-card__icon {
+  position: absolute;
+  right: 17px;
+  top: 17px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+.metric-card p {
+  padding-right: 28px;
+  font-size: 11px;
+}
+.metric-card strong {
+  margin-top: 18px;
+  font-size: 28px;
+}
+.metric-card--accent {
+  background: #fff;
+}
+.metric-card:nth-child(2) .metric-card__icon {
+  background: #f1eaff;
+  color: #8854d0;
+}
+.metric-card:nth-child(3) .metric-card__icon {
+  background: #e7f5ee;
+  color: #268354;
+}
+.task {
+  min-height: 56px;
+}
+.task--done .task__check {
+  background: #34a878;
+  border-color: #34a878;
+}
+.page--timer {
+  max-width: 950px;
+}
+.timer-card {
+  background: radial-gradient(ellipse at 50% 0, #f0f6ff, transparent 65%), #fff;
+}
+.timer-readout time {
+  font-weight: 300;
+}
+.duration-presets {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 28px;
+  padding: 5px;
+  border-radius: 999px;
+  background: #ebedf1;
+}
+.duration-presets button {
+  min-height: 36px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: #626874;
+}
+.duration-presets button[aria-pressed="true"] {
+  background: white;
+  color: #006bdc;
+  box-shadow: 0 2px 6px #00000014;
+}
+.dialog {
+  border-radius: 28px;
+  background: rgba(248, 249, 252, 0.96);
+}
+.dialog p {
+  line-height: 1.5;
+}
+.button--danger:hover {
+  background: #ffd3d3;
+}
+@media (max-width: 1100px) and (min-width: 701px) {
+  .focus-hero {
+    padding: 28px;
+  }
+  .hero-dial {
+    width: 180px;
+  }
+  .hero-dial strong {
+    font-size: 44px;
+  }
+  .metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .metric-card {
+    padding: 18px 14px;
+  }
+  .metric-card strong {
+    font-size: 23px;
+  }
+  .metric-card__icon {
+    display: none;
+  }
+  .metric-card p {
+    padding-right: 0;
+  }
+}
+@media (max-width: 850px) and (min-width: 701px) {
+  .app-shell {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+  .sidebar {
+    width: 190px;
+    padding-inline: 12px;
+  }
+  .hero-dial {
+    width: 140px;
+  }
+  .hero-dial strong {
+    font-size: 32px;
+  }
+  .hero-dial span {
+    font-size: 7px;
+  }
+}
+@media (max-width: 700px) {
+  .nav-caption {
+    display: none;
+  }
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid #0000000a;
+  }
+  .navigation {
+    justify-content: space-around;
+  }
+  .nav-item {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .page {
+    padding: 30px 18px;
+  }
+  .focus-hero {
+    padding: 28px;
+    gap: 12px;
+  }
+  .hero-dial {
+    width: 160px;
+  }
+  .hero-dial strong {
+    font-size: 36px;
+  }
+  .hero-dial span {
+    font-size: 7px;
+  }
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+  .metric-card {
+    min-height: 120px;
+  }
+  .metric-card strong {
+    margin-top: 8px;
+  }
+  .section-heading {
+    flex-direction: row;
+    align-items: center;
+    padding: 20px;
+    gap: 12px;
+  }
+  .section-heading .button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .task-list {
+    padding-inline: 20px;
+  }
+  .task {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .empty-state,
+  .placeholder-card {
+    padding: 30px 22px;
+  }
+}
+@media (max-width: 460px) {
+  .focus-hero {
+    position: relative;
+    padding: 26px;
+  }
+  .focus-hero__copy {
+    position: relative;
+    z-index: 1;
+  }
+  .hero-dial {
+    position: absolute;
+    width: 145px;
+    right: -50px;
+    top: 35px;
+    opacity: 0.2;
+  }
+  .duration-presets button {
+    padding-inline: 11px;
+  }
+  .timer-setup,
+  .timer-active {
+    padding-inline: 18px;
+  }
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .button:active,
+  .nav-item:active,
+  .segmented button:active,
+  .duration-presets button:active {
+    transform: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar {
+    background: #e9ecf1;
+    backdrop-filter: none;
+  }
+  .modal-backdrop {
+    backdrop-filter: none;
+  }
+  .dialog {
+    background: #f8f9fc;
+  }
+}
+@media (prefers-contrast: more) {
+  :root {
+    color: #111;
+  }
+  .subtitle,
+  .eyebrow,
+  .field-hint,
+  .task__duration,
+  .metric-card span,
+  .timer-footnote {
+    color: #414955;
+  }
+  .metric-card,
+  .content-card,
+  .timer-card,
+  .dialog,
+  .focus-hero,
+  .button--secondary {
+    border: 1px solid #68717d;
+  }
+  .sidebar {
+    background: #e9ecf1;
+    backdrop-filter: none;
   }
 }
