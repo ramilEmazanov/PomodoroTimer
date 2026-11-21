@@ -5,23 +5,21 @@ export default function Placeholder({ section }: { section: "stats" | "settings"
   return (
     <div className="page">
       <header className="page-header">
-        <p className="eyebrow">{isStats ? "ВАШ ПРОГРЕСС" : "ПРИЛОЖЕНИЕ"}</p>
-        <h1>{isStats ? "Статистика" : "Настройки"}</h1>
+        <p className="eyebrow">{isStats ? "YOUR PROGRESS" : "APPLICATION"}</p>
+        <h1>{isStats ? "Statistics" : "Settings"}</h1>
         <p className="subtitle">
-          {isStats
-            ? "История и динамика фокус-сессий."
-            : "Персонализация вашего рабочего пространства."}
+          {isStats ? "Your focus session history and trends." : "Personalize your workspace."}
         </p>
       </header>
       <section className="placeholder-card">
         <span className="placeholder-card__icon">
           <Icon name={isStats ? "chart" : "settings"} size={30} />
         </span>
-        <h2>Раздел в разработке</h2>
+        <h2>Coming soon</h2>
         <p>
           {isStats
-            ? "Подробная статистика появится в следующих версиях."
-            : "Дополнительные параметры появятся в следующих версиях."}
+            ? "Detailed statistics will be available in a future update."
+            : "More settings will be available in a future update."}
         </p>
       </section>
     </div>

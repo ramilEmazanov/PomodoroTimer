@@ -2,18 +2,10 @@ import { useMemo } from "react";
 import Icon from "../components/Icon";
 import AppButton from "../components/AppButton";
 
-export default function Home({
-  empty,
-  setEmpty,
-  openTimer,
-}: {
-  empty: boolean;
-  setEmpty: (value: boolean) => void;
-  openTimer: () => void;
-}) {
+export default function Home({ empty, openTimer }: { empty: boolean; openTimer: () => void }) {
   const today = useMemo(
     () =>
-      new Intl.DateTimeFormat("ru-RU", {
+      new Intl.DateTimeFormat("en-US", {
         weekday: "long",
         day: "numeric",
         month: "long",
@@ -26,24 +18,7 @@ export default function Home({
       <header className="page-header page-header--split">
         <div>
           <p className="eyebrow">{today}</p>
-          <h1>Добрый день, Алексей</h1>
-          <p className="subtitle">Небольшой шаг к важной цели начинается с фокуса.</p>
-        </div>
-        <div aria-label="Состояние главной" className="segmented">
-          <button
-            aria-pressed={!empty}
-            className={!empty ? "active" : ""}
-            onClick={() => setEmpty(false)}
-          >
-            С данными
-          </button>
-          <button
-            aria-pressed={empty}
-            className={empty ? "active" : ""}
-            onClick={() => setEmpty(true)}
-          >
-            Пусто
-          </button>
+          <h1>Home</h1>
         </div>
       </header>
 
@@ -52,68 +27,34 @@ export default function Home({
           <div className="empty-state__icon">
             <Icon name="focus" size={28} />
           </div>
-          <h2>Начните первую сессию</h2>
-          <p>Здесь появится статистика времени и список завершённых задач.</p>
+          <h2>Start your first session</h2>
+          <p>Your focus time and completed tasks will appear here.</p>
           <AppButton onClick={openTimer}>
-            <Icon name="play" size={18} /> Запустить таймер
+            <Icon name="play" size={18} /> Start timer
           </AppButton>
         </section>
       ) : (
         <>
-          <section className="focus-hero">
-            <div className="focus-hero__copy">
-              <p className="eyebrow">ВАШЕ ВРЕМЯ. ВАШ РИТМ.</p>
-              <h2>
-                Меньше шума.
-                <br />
-                Больше фокуса.
-              </h2>
-              <p>
-                Оставьте место для главного.
-                <br />
-                Одна задача и немного времени для себя.
-              </p>
-              <AppButton onClick={openTimer}>
-                <Icon name="play" size={18} /> Начать сессию
-              </AppButton>
-            </div>
-            <div className="hero-dial" aria-hidden="true">
-              <div>
-                <span>ФОКУС</span>
-                <strong>25:00</strong>
-                <span>МИНУТ ДЛЯ ГЛАВНОГО</span>
-              </div>
-            </div>
-          </section>
-          <section aria-label="Краткая статистика" className="metric-grid">
+          <section aria-label="Focus overview" className="metric-grid">
             <article className="metric-card metric-card--accent">
-              <div className="metric-card__icon">
-                <Icon name="timer" size={20} />
-              </div>
               <div>
-                <p>В фокусе сегодня</p>
-                <strong>1 ч 45 мин</strong>
-                <span>На 18 мин больше, чем вчера</span>
+                <p>Focus today</p>
+                <strong>1 h 45 min</strong>
+                <span>18 min more than yesterday</span>
               </div>
             </article>
             <article className="metric-card">
-              <div className="metric-card__icon">
-                <Icon name="calendar" size={20} />
-              </div>
               <div>
-                <p>В фокусе на этой неделе</p>
-                <strong>8 ч 20 мин</strong>
-                <span>На 12% больше прошлой недели</span>
+                <p>Focus this week</p>
+                <strong>8 h 20 min</strong>
+                <span>12% more than last week</span>
               </div>
             </article>
             <article className="metric-card">
-              <div className="metric-card__icon">
-                <Icon name="check" size={20} />
-              </div>
               <div>
-                <p>Сессий завершено</p>
+                <p>Sessions completed</p>
                 <strong>4</strong>
-                <span>Лучший результат недели</span>
+                <span>Your best this week</span>
               </div>
             </article>
           </section>
@@ -121,20 +62,17 @@ export default function Home({
           <section className="content-card tasks">
             <div className="section-heading">
               <div>
-                <h2>Задачи на сегодня</h2>
-                <p>3 из 5 выполнено</p>
+                <h2>Today’s tasks</h2>
+                <p>3 of 5 completed</p>
               </div>
-              <AppButton onClick={openTimer} variant="secondary">
-                <Icon name="play" size={17} /> Начать фокус
-              </AppButton>
             </div>
             <div className="task-list">
               {[
-                ["Подготовить структуру презентации", true, "45 мин"],
-                ["Разобрать входящие сообщения", true, "25 мин"],
-                ["Обновить план проекта", true, "35 мин"],
-                ["Согласовать макеты интерфейса", false, "25 мин"],
-                ["Подвести итоги дня", false, "15 мин"],
+                ["Outline the presentation", true, "45 min"],
+                ["Review incoming messages", true, "25 min"],
+                ["Update the project plan", true, "35 min"],
+                ["Review interface designs", false, "25 min"],
+                ["Reflect on the day", false, "15 min"],
               ].map(([label, done, duration]) => (
                 <div className={`task ${done ? "task--done" : ""}`} key={String(label)}>
                   <span className="task__check">{done && <Icon name="check" size={14} />}</span>
