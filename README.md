@@ -89,5 +89,6 @@ Vitest + React Testing Library проверяют защиту от повтор
 
 ## Материалы проекта
 
+- [PDF со скриншотами двух версий интерфейса](output/pdf/interface_versions.pdf) — 21 страница: исходная версия и версия после доработок.
 - [Базовый пользовательский сценарий](submission/basic_scenario.md).
 - [Создание макета и использованный промпт](submission/mockup_creation.md).
