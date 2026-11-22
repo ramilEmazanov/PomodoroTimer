@@ -10,10 +10,53 @@ const INITIAL_MINUTES = 25;
 const INITIAL_SECONDS = INITIAL_MINUTES * 60;
 
 export default function App() {
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      const saved = localStorage.getItem("focus-theme");
+      if (saved === "light" || saved === "dark") return saved;
+    } catch {
+      /* Storage may be unavailable in private contexts. */
+    }
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem("focus-theme", theme);
+    } catch {
+      /* Keep the in-memory preference. */
+    }
+  }, [theme]);
+
+  const [recents, setRecents] = useState<number[]>(() => {
+    try {
+      const stored: unknown = JSON.parse(localStorage.getItem("focus-recents") || "[]");
+      return Array.isArray(stored)
+        ? [
+            ...new Set(
+              stored.filter(
+                (value): value is number => Number.isInteger(value) && value > 0 && value <= 86399,
+              ),
+            ),
+          ].slice(0, 8)
+        : [];
+    } catch {
+      return [];
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("focus-recents", JSON.stringify(recents));
+    } catch {
+      /* Storage is optional. */
+    }
+  }, [recents]);
+
   const [section, setSection] = useState<Section>("home");
   const [homeEmpty, setHomeEmpty] = useState(false);
   const [timerState, setTimerState] = useState<TimerState>("setup");
-  const [durationInput, setDurationInput] = useState(String(INITIAL_MINUTES));
+  const [durationInput, setDurationInput] = useState(String(INITIAL_SECONDS));
   const [totalSeconds, setTotalSeconds] = useState(INITIAL_SECONDS);
   const [remaining, setRemaining] = useState(INITIAL_SECONDS);
   const [endAt, setEndAt] = useState<number | null>(null);
@@ -36,20 +79,17 @@ export default function App() {
     return () => window.clearInterval(interval);
   }, [timerState, endAt]);
 
-  const validMinutes = () => {
-    if (!/^\d+$/.test(durationInput)) return null;
-    const value = Number(durationInput);
-    return Number.isInteger(value) && value >= 1 && value <= 1440 ? value : null;
-  };
-
-  const startTimer = () => {
-    const minutes = validMinutes();
-    if (minutes === null) {
+  const startTimer = (presetSeconds?: number) => {
+    const seconds = presetSeconds ?? Number(durationInput);
+    if (!Number.isInteger(seconds) || seconds < 1 || seconds > 86399) {
       setInputError(true);
       return;
     }
-    const seconds = minutes * 60;
     setInputError(false);
+    setRecents((previous) =>
+      [seconds, ...previous.filter((value) => value !== seconds)].slice(0, 8),
+    );
+    setDurationInput(String(seconds));
     setTotalSeconds(seconds);
     setRemaining(seconds);
     setEndAt(Date.now() + seconds * 1000);
@@ -100,7 +140,7 @@ export default function App() {
       return;
     }
     if (state === "setup") {
-      setDurationInput(String(INITIAL_MINUTES));
+      setDurationInput(String(INITIAL_SECONDS));
       setTimerState("setup");
       return;
     }
@@ -115,13 +155,18 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar active={section} onNavigate={setSection} onPreview={previewState} />
+      <Sidebar
+        active={section}
+        onNavigate={setSection}
+        onPreview={previewState}
+        dark={theme === "dark"}
+        toggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
+      />
       <main>
-        {section === "home" && (
-          <Home empty={homeEmpty} openTimer={() => setSection("timer")} setEmpty={setHomeEmpty} />
-        )}
+        {section === "home" && <Home empty={homeEmpty} openTimer={() => setSection("timer")} />}
         {section === "timer" && (
           <TimerView
+            endsAt={endAt}
             error={inputError}
             input={durationInput}
             newTimer={newTimer}
@@ -133,7 +178,9 @@ export default function App() {
               setDurationInput(value);
               if (inputError) setInputError(false);
             }}
-            start={startTimer}
+            recents={recents}
+            startRecent={(seconds) => startTimer(seconds)}
+            start={() => startTimer()}
             state={timerState}
             total={totalSeconds}
           />
