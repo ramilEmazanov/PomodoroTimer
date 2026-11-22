@@ -37,7 +37,35 @@ export default function TimerView({
   newTimer: () => void;
 }) {
   const [entryMode, setEntryMode] = useState<"wheel" | "input">("wheel");
+  const [manualValues, setManualValues] = useState<string[] | null>(null);
   const duration = Number(input) || 0;
+  const units = [
+    { label: "Hours", factor: 3600, max: 23, value: Math.floor(duration / 3600) },
+    { label: "Minutes", factor: 60, max: 59, value: Math.floor((duration % 3600) / 60) },
+    { label: "Seconds", factor: 1, max: 59, value: duration % 60 },
+  ];
+  const displayedValues = manualValues ?? units.map((unit) => String(unit.value).padStart(2, "0"));
+  const invalidFields = displayedValues.map(
+    (value, index) =>
+      value === "" ||
+      !Number.isInteger(Number(value)) ||
+      Number(value) < 0 ||
+      Number(value) > units[index].max,
+  );
+  const invalidIndex = entryMode === "input" ? invalidFields.findIndex(Boolean) : -1;
+  const validationMessage =
+    invalidIndex >= 0
+      ? displayedValues[invalidIndex] === ""
+        ? `Enter a value for ${units[invalidIndex].label}.`
+        : `${units[invalidIndex].label} must be a whole number from 0 to ${units[invalidIndex].max}.`
+      : error || duration === 0
+        ? "Choose a duration of at least 1 second."
+        : null;
+  const startCurrent = () => {
+    if (validationMessage) return;
+    setManualValues(null);
+    start();
+  };
   const progress = total > 0 ? Math.max(0, Math.min(1, remaining / total)) : 0;
   const circumference = 2 * Math.PI * 148;
   const status =
@@ -71,14 +99,20 @@ export default function TimerView({
                 <button
                   className={entryMode === "wheel" ? "active" : ""}
                   aria-pressed={entryMode === "wheel"}
-                  onClick={() => setEntryMode("wheel")}
+                  onClick={() => {
+                    setManualValues(null);
+                    setEntryMode("wheel");
+                  }}
                 >
                   Wheel
                 </button>
                 <button
                   className={entryMode === "input" ? "active" : ""}
                   aria-pressed={entryMode === "input"}
-                  onClick={() => setEntryMode("input")}
+                  onClick={() => {
+                    setManualValues(null);
+                    setEntryMode("input");
+                  }}
                 >
                   Input
                 </button>
@@ -87,16 +121,7 @@ export default function TimerView({
                 <DurationPicker seconds={duration} onChange={(value) => setInput(String(value))} />
               ) : (
                 <div className="duration-manual" role="group" aria-label="Timer duration">
-                  {[
-                    { label: "Hours", factor: 3600, max: 23, value: Math.floor(duration / 3600) },
-                    {
-                      label: "Minutes",
-                      factor: 60,
-                      max: 59,
-                      value: Math.floor((duration % 3600) / 60),
-                    },
-                    { label: "Seconds", factor: 1, max: 59, value: duration % 60 },
-                  ].map((unit) => (
+                  {units.map((unit, index) => (
                     <label key={unit.label}>
                       <span aria-hidden="true">
                         {unit.label === "Hours" ? "hr" : unit.label === "Minutes" ? "min" : "sec"}
@@ -107,40 +132,64 @@ export default function TimerView({
                         min={0}
                         max={unit.max}
                         step={1}
+                        required
                         aria-label={unit.label}
-                        value={String(unit.value).padStart(2, "0")}
+                        aria-invalid={invalidFields[index] || undefined}
+                        aria-describedby={validationMessage ? "duration-error" : undefined}
+                        value={displayedValues[index]}
                         onFocus={(event) => event.currentTarget.select()}
                         onChange={(event) => {
-                          const value = Number(event.target.value);
-                          if (Number.isInteger(value) && value >= 0 && value <= unit.max) {
-                            setInput(String(duration + (value - unit.value) * unit.factor));
+                          const next = displayedValues.map((value, i) =>
+                            i === index ? event.target.value : value,
+                          );
+                          setManualValues(next);
+                          if (
+                            next.every(
+                              (value, i) =>
+                                value !== "" &&
+                                Number.isInteger(Number(value)) &&
+                                Number(value) >= 0 &&
+                                Number(value) <= units[i].max,
+                            )
+                          ) {
+                            setInput(
+                              String(
+                                next.reduce(
+                                  (total, value, i) => total + Number(value) * units[i].factor,
+                                  0,
+                                ),
+                              ),
+                            );
                           }
                         }}
                         onKeyDown={(event) => {
-                          if (event.key === "Enter" && duration > 0) start();
+                          if (event.key === "Enter") startCurrent();
                         }}
                       />
                     </label>
                   ))}
                 </div>
               )}
-              {error && (
-                <p className="field-error" role="alert">
-                  Choose a duration of at least 1 second.
+              {validationMessage && (
+                <p className="field-error" role="alert" id="duration-error">
+                  {validationMessage}
                 </p>
               )}
               <div className="clock-actions">
                 <button
                   className="clock-button clock-button--cancel"
-                  disabled={Number(input) === 0}
-                  onClick={() => setInput("0")}
+                  disabled={duration === 0 && !manualValues}
+                  onClick={() => {
+                    setManualValues(null);
+                    setInput("0");
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   className="clock-button clock-button--start"
-                  disabled={Number(input) === 0}
-                  onClick={start}
+                  disabled={Boolean(validationMessage)}
+                  onClick={startCurrent}
                 >
                   Start
                 </button>

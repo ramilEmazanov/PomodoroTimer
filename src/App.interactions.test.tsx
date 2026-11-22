@@ -34,6 +34,7 @@ describe("Component rendering and user interactions", () => {
     const minutes = screen.getByRole("spinbutton", { name: "Minutes" });
     const secondsInput = screen.getByRole("spinbutton", { name: "Seconds" });
     await user.clear(minutes);
+    await user.type(minutes, "0");
     await user.clear(secondsInput);
     await user.type(secondsInput, String(seconds));
     return user;
@@ -92,6 +93,7 @@ describe("Component rendering and user interactions", () => {
     expect(seconds).toHaveValue(59);
 
     await user.clear(hours);
+    await user.type(hours, "0");
     await user.clear(minutes);
     await user.type(minutes, "2");
     await user.clear(seconds);

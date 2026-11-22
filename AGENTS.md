@@ -8,6 +8,7 @@ React + Vite + Tailwind CSS project exported from Figma Make.
 - Start the local server with `pnpm dev` (default port 8443).
 - Run `pnpm typecheck` and `pnpm build` after source changes.
 - Use `pnpm format` for formatting.
+- After completing changes and passing the required checks, create a Git commit with a clear message describing the changes. Commit only files relevant to the task. Do not push unless explicitly requested. Skip the commit if the user asks not to commit.
 
 ## Project Structure
 
