@@ -65,6 +65,7 @@ export default function Home({ empty, openTimer }: { empty: boolean; openTimer: 
                 <h2>Today’s tasks</h2>
                 <p>3 of 5 completed</p>
               </div>
+              <AppButton onClick={openTimer}>Start Focus</AppButton>
             </div>
             <div className="task-list">
               {[
