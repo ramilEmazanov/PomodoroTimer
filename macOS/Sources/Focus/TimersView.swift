@@ -20,13 +20,10 @@ struct TimersView: View {
 
   private var setup: some View {
     VStack(spacing: 16) {
-      Picker("Duration entry mode", selection: $state.entryMode) {
-        ForEach(InterfaceState.EntryMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-      }
-      .pickerStyle(.segmented).labelsHidden().frame(width: 190)
-      .onChange(of: state.entryMode) { _, mode in
-        if mode == .wheel { state.setDuration(min(86399, max(0, state.duration))) }
-      }
+      DurationEntryModePicker(selection: $state.entryMode)
+        .onChange(of: state.entryMode) { _, mode in
+          if mode == .wheel { state.setDuration(min(86399, max(0, state.duration))) }
+        }
       if state.entryMode == .wheel {
         HStack(spacing: 0) {
           DurationWheel(text: $state.fields[0], maximum: 23, label: "Hours", unit: "h")
