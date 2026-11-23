@@ -5,6 +5,7 @@ final class InterfaceState {
   enum Section: String, CaseIterable, Identifiable {
     case home = "Home"
     case timer = "Timer"
+    case tasks = "Tasks"
     case statistics = "Statistics"
     case settings = "Settings"
     var id: Self { self }
@@ -12,6 +13,7 @@ final class InterfaceState {
       switch self {
       case .home: "house"
       case .timer: "timer"
+      case .tasks: "checklist"
       case .statistics: "chart.bar"
       case .settings: "gearshape"
       }
@@ -32,6 +34,7 @@ final class InterfaceState {
   private(set) var phase: TimerPhase = .setup
   private(set) var saved = SavedFocusState()
   private(set) var sessions: [FocusSession] = []
+  private(set) var pendingTasks: [FocusTask]?
   private(set) var now: Date
   private(set) var loaded = false
   @ObservationIgnored private var store: (any FocusStorage)?
@@ -174,8 +177,11 @@ final class InterfaceState {
   private func commit(_ candidate: SavedFocusState, adding records: [FocusSession] = []) -> Bool {
     guard loaded, let store else { return false }
     do {
+      var candidate = candidate
+      candidate.tasks = pendingTasks ?? candidate.tasks
       try store.save(candidate, adding: records)
       saved = candidate
+      pendingTasks = nil
       let existing = Set(sessions.map(\.id))
       sessions = (records.filter { !existing.contains($0.id) } + sessions).sorted {
         $0.endedAt > $1.endedAt
@@ -186,6 +192,60 @@ final class InterfaceState {
       storageError = "Your change could not be saved. \(error.localizedDescription)"
       return false
     }
+  }
+
+  var tasks: [FocusTask] { pendingTasks ?? saved.tasks }
+
+  @discardableResult
+  func addTask(title: String) -> UUID? {
+    let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard loaded, !title.isEmpty else { return nil }
+    let instant = clock()
+    let task = FocusTask(id: UUID(), title: title, createdAt: instant, updatedAt: instant)
+    saveTasks([task] + tasks)
+    return task.id
+  }
+
+  func editTask(_ id: UUID, change: (inout FocusTask) -> Void) {
+    guard loaded, let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+    var updated = tasks
+    change(&updated[index])
+    let title = updated[index].title.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !title.isEmpty else { return }
+    updated[index].title = title
+    guard updated[index] != tasks[index] else { return }
+    updated[index].updatedAt = clock()
+    saveTasks(updated)
+  }
+
+  func deleteTask(_ id: UUID) {
+    guard loaded, tasks.contains(where: { $0.id == id }) else { return }
+    saveTasks(tasks.filter { $0.id != id })
+  }
+
+  @discardableResult
+  func addSubtask(to id: UUID, title: String) -> Bool {
+    let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard loaded, !title.isEmpty, tasks.contains(where: { $0.id == id }) else { return false }
+    editTask(id) { $0.subtasks.append(FocusSubtask(id: UUID(), title: title)) }
+    return true
+  }
+
+  func editSubtask(_ subtaskID: UUID, in taskID: UUID, change: (inout FocusSubtask) -> Void) {
+    editTask(taskID) { task in
+      guard let index = task.subtasks.firstIndex(where: { $0.id == subtaskID }) else { return }
+      var subtask = task.subtasks[index]
+      change(&subtask)
+      subtask.title = subtask.title.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !subtask.title.isEmpty else { return }
+      task.subtasks[index] = subtask
+    }
+  }
+
+  private func saveTasks(_ tasks: [FocusTask]) {
+    // Retain unsaved edits on screen if disk writes fail; Retry storage commits them later.
+    pendingTasks = tasks
+    _ = commit(saved)
   }
 
   static func time(_ seconds: Int) -> String {

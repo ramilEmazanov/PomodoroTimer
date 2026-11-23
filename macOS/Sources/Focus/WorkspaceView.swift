@@ -8,30 +8,35 @@ struct WorkspaceView: View {
     HStack(spacing: 0) {
       sidebar
       Divider()
-      ScrollView {
-        VStack(spacing: 20) {
-          if let error = state.storageError {
-            Surface {
-              VStack(alignment: .leading, spacing: 12) {
-                Label("Unable to save data", systemImage: "exclamationmark.triangle").font(
-                  .headline)
-                Text(error).font(.callout).foregroundStyle(.secondary)
-                Button("Retry storage") { state.retryStorage() }.buttonStyle(ActionStyle())
-              }.frame(maxWidth: .infinity, alignment: .leading)
-            }
-          }
-          Group {
-            switch state.section {
-            case .home: HomeView(state: state)
-            case .timer: TimersView(state: state)
-            case .statistics: StatisticsView(state: state)
-            case .settings: settings
-            }
-          }.disabled(!state.loaded)
+      VStack(spacing: 0) {
+        if let error = state.storageError {
+          Surface {
+            VStack(alignment: .leading, spacing: 12) {
+              Label("Unable to save data", systemImage: "exclamationmark.triangle").font(.headline)
+              Text(error).font(.callout).foregroundStyle(.secondary)
+              Button("Retry storage") { state.retryStorage() }.buttonStyle(ActionStyle())
+            }.frame(maxWidth: .infinity, alignment: .leading)
+          }.padding(24)
         }
-        .padding(40)
-        .frame(maxWidth: 1120)
-        .frame(maxWidth: .infinity)
+        if state.section == .tasks {
+          TasksView(state: state).disabled(!state.loaded)
+        } else {
+          ScrollView {
+            Group {
+              switch state.section {
+              case .home: HomeView(state: state)
+              case .timer: TimersView(state: state)
+              case .statistics: StatisticsView(state: state)
+              case .settings: settings
+              case .tasks: EmptyView()
+              }
+            }
+            .disabled(!state.loaded)
+            .padding(40)
+            .frame(maxWidth: 1120)
+            .frame(maxWidth: .infinity)
+          }
+        }
       }
       .background(Color.workspace)
     }

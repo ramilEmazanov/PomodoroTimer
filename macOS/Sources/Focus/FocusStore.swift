@@ -50,12 +50,12 @@ final class SQLiteFocusStore: FocusStorage {
       let version = try statement("PRAGMA user_version")
       defer { sqlite3_finalize(version) }
       guard sqlite3_step(version) == SQLITE_ROW else { throw failure() }
-      guard sqlite3_column_int(version, 0) <= 1 else { throw FocusStoreError.incompatibleVersion }
+      guard sqlite3_column_int(version, 0) <= 2 else { throw FocusStoreError.incompatibleVersion }
       try execute(
         """
         CREATE TABLE IF NOT EXISTS app_state (id INTEGER PRIMARY KEY CHECK(id = 1), payload BLOB NOT NULL);
         CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY NOT NULL, payload BLOB NOT NULL);
-        PRAGMA user_version=1;
+        PRAGMA user_version=2;
         """)
     } catch {
       sqlite3_close(database)

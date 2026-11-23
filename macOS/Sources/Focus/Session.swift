@@ -66,6 +66,23 @@ struct SavedFocusState: Codable, Equatable {
   var recents: [Int] = []
   var dark: Bool?
   var lastDuration = 1500
+  var tasks: [FocusTask] = []
+
+  init() {}
+
+  private enum CodingKeys: String, CodingKey {
+    case active, recents, dark, lastDuration, tasks
+  }
+
+  // Version 1 snapshots predate Tasks. Keep their timer, history and preferences intact.
+  init(from decoder: any Decoder) throws {
+    let values = try decoder.container(keyedBy: CodingKeys.self)
+    active = try values.decodeIfPresent(ActiveSession.self, forKey: .active)
+    recents = try values.decode([Int].self, forKey: .recents)
+    dark = try values.decodeIfPresent(Bool.self, forKey: .dark)
+    lastDuration = try values.decode(Int.self, forKey: .lastDuration)
+    tasks = try values.decodeIfPresent([FocusTask].self, forKey: .tasks) ?? []
+  }
 }
 
 struct FocusHistory {
