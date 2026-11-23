@@ -214,31 +214,33 @@ struct TasksView: View {
   }
 
   private func taskRow(_ task: FocusTask, select: @escaping () -> Void) -> some View {
-    HStack(spacing: 12) {
+    HStack(alignment: .center, spacing: 12) {
       CompletionButton(completed: task.isCompleted, label: task.title) {
         state.editTask(task.id) { $0.isCompleted.toggle() }
       }
       Button(action: select) {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 3) {
           Text(task.title).font(.system(size: 15, weight: .medium))
             .strikethrough(task.isCompleted)
             .foregroundStyle(task.isCompleted ? .secondary : .primary)
             .lineLimit(2).multilineTextAlignment(.leading)
-          HStack(spacing: 8) {
-            if !task.subtasks.isEmpty {
-              Text("\(task.completedSteps) of \(task.subtasks.count)")
+          if !task.subtasks.isEmpty || task.dueDate != nil || !task.note.isEmpty {
+            HStack(spacing: 8) {
+              if !task.subtasks.isEmpty {
+                Text("\(task.completedSteps) of \(task.subtasks.count)")
+              }
+              if let date = task.dueDate {
+                Label(date.formatted(.dateTime.day().month(.abbreviated)), systemImage: "calendar")
+                  .foregroundStyle(task.isOverdue(at: state.now) ? Color.red : .secondary)
+              }
+              if !task.note.isEmpty {
+                Image(systemName: "note.text").accessibilityLabel("Has a note")
+              }
             }
-            if let date = task.dueDate {
-              Label(date.formatted(.dateTime.day().month(.abbreviated)), systemImage: "calendar")
-                .foregroundStyle(task.isOverdue(at: state.now) ? Color.red : .secondary)
-            }
-            if !task.note.isEmpty {
-              Image(systemName: "note.text").accessibilityLabel("Has a note")
-            }
+            .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
           }
-          .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
         }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
         .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
@@ -247,13 +249,16 @@ struct TasksView: View {
         state.editTask(task.id) { $0.isImportant.toggle() }
       } label: {
         Image(systemName: task.isImportant ? "star.fill" : "star")
+          .font(.system(size: 14))
+          .frame(width: 24, height: 30)
+          .contentShape(Rectangle())
           .foregroundStyle(task.isImportant ? Color.blue : .secondary)
       }
       .buttonStyle(.plain)
       .help(task.isImportant ? "Remove importance" : "Mark important")
       .accessibilityLabel("\(task.isImportant ? "Unmark" : "Mark") important: \(task.title)")
     }
-    .padding(.horizontal, 14).padding(.vertical, 10)
+    .padding(.horizontal, 14).padding(.vertical, 6)
     .background(
       selection == task.id ? Color.blue.opacity(0.16) : Color.panel,
       in: RoundedRectangle(cornerRadius: 10)
