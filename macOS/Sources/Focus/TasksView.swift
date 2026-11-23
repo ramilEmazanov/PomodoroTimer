@@ -4,7 +4,6 @@ struct TasksView: View {
   @Bindable var state: InterfaceState
   @State private var selection: UUID?
   @State private var newTitle = ""
-  @State private var search = ""
   @State private var sort: TaskSort = .dueDate
   @State private var filter: TaskFilter = .all
   @State private var showCompactDetail = false
@@ -21,18 +20,11 @@ struct TasksView: View {
   private var visibleTasks: [FocusTask] {
     sort.sorted(
       state.tasks.filter { task in
-        let matchesFilter =
-          switch filter {
-          case .all: true
-          case .active: !task.isCompleted
-          case .completed: task.isCompleted
-          }
-        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        let matchesSearch =
-          query.isEmpty
-          || ([task.title, task.note] + task.subtasks.map(\.title))
-            .contains { $0.localizedStandardContains(query) }
-        return matchesFilter && matchesSearch
+        switch filter {
+        case .all: true
+        case .active: !task.isCompleted
+        case .completed: task.isCompleted
+        }
       })
   }
 
@@ -124,19 +116,6 @@ struct TasksView: View {
           "\(state.tasks.filter { !$0.isCompleted }.count) active · \(state.tasks.filter(\.isCompleted).count) completed"
         )
         .font(.system(size: 12)).foregroundStyle(.secondary)
-        HStack(spacing: 8) {
-          Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-          TextField("Search tasks", text: $search).textFieldStyle(.plain)
-          if !search.isEmpty {
-            Button {
-              search = ""
-            } label: {
-              Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain).accessibilityLabel("Clear search")
-          }
-        }
-        .padding(10).background(Color.panel, in: RoundedRectangle(cornerRadius: 9))
         HStack {
           Menu {
             Picker("Sort tasks", selection: $sort) {
@@ -166,14 +145,14 @@ struct TasksView: View {
         LazyVStack(spacing: 5) {
           if visibleTasks.isEmpty {
             VStack(spacing: 12) {
-              Image(systemName: state.tasks.isEmpty ? "checklist" : "magnifyingglass")
+              Image(systemName: "checklist")
                 .font(.system(size: 28, weight: .light))
               Text(state.tasks.isEmpty ? "Make room for what matters" : "No matching tasks").font(
                 .headline)
               Text(
                 state.tasks.isEmpty
                   ? "Add your first task below, then break it into smaller steps."
-                  : "Try another search or task filter."
+                  : "Try another task filter."
               )
               .font(.callout).multilineTextAlignment(.center)
             }
@@ -208,7 +187,6 @@ struct TasksView: View {
     guard let id = state.addTask(title: newTitle) else { return }
     selection = id
     newTitle = ""
-    search = ""
     filter = .all
     if compact { showCompactDetail = true }
   }
