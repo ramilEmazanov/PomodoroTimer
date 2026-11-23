@@ -110,7 +110,7 @@ struct TimersView: View {
         } else {
           Button("Cancel") { state.showReset = true }.buttonStyle(ActionStyle(prominent: false))
           Button(state.phase == .paused ? "Resume" : "Pause") {
-            state.phase = state.phase == .paused ? .running : .paused
+            state.pauseOrResume()
           }.buttonStyle(ActionStyle())
         }
       }

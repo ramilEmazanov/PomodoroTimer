@@ -1,6 +1,5 @@
 import SwiftUI
 
-// Presentation-only state. No clock, persistence, network, or session accounting.
 @Observable
 final class InterfaceState {
   enum Section: String, CaseIterable, Identifiable {
@@ -24,28 +23,44 @@ final class InterfaceState {
     case wheel = "Wheel"
     case input = "Input"
   }
-  enum Preview: String, CaseIterable, Identifiable {
-    case homeData = "Home with data"
-    case homeEmpty = "Empty home"
-    case setup = "Timer setup"
-    case error = "Validation error"
-    case running = "Running timer"
-    case paused = "Pause"
-    case dialog = "Reset dialog"
-    case finished = "Finished timer"
-    var id: Self { self }
-  }
 
   var section: Section = .home
-  var dark = false
-  var emptyHome = false
-  var phase: TimerPhase = .setup
   var entryMode: EntryMode = .wheel
   var fields = ["00", "25", "00"]
-  var remaining = 1500
-  var total = 1500
-  var recents: [Int] = []
   var showReset = false
+  var storageError: String?
+  private(set) var phase: TimerPhase = .setup
+  private(set) var saved = SavedFocusState()
+  private(set) var sessions: [FocusSession] = []
+  private(set) var now: Date
+  private(set) var loaded = false
+  @ObservationIgnored private var store: (any FocusStorage)?
+  @ObservationIgnored private let clock: () -> Date
+
+  init(store: (any FocusStorage)? = nil, clock: @escaping () -> Date = { .now }) {
+    self.clock = clock
+    now = clock()
+    do {
+      self.store = try store ?? SQLiteFocusStore()
+      try reload()
+    } catch { storageError = error.localizedDescription }
+  }
+
+  var dark: Bool {
+    get { saved.dark ?? false }
+    set {
+      var candidate = saved
+      candidate.dark = newValue
+      _ = commit(candidate)
+    }
+  }
+  var recents: [Int] { saved.recents }
+  var total: Int { saved.active?.plannedSeconds ?? saved.lastDuration }
+  var remaining: Int {
+    if phase == .finished { return 0 }
+    return Int(ceil(saved.active?.remaining(at: now) ?? Double(saved.lastDuration)))
+  }
+  var history: FocusHistory { FocusHistory(sessions: sessions, active: saved.active, now: now) }
 
   var duration: Int {
     fields.enumerated().reduce(0) { total, field in
@@ -72,41 +87,105 @@ final class InterfaceState {
   }
 
   func start(_ seconds: Int? = nil) {
-    guard phase != .running, phase != .paused else { return }
+    guard loaded, saved.active == nil else { return }
     if seconds == nil && validation != nil { return }
     let value = seconds ?? duration
     guard (1...86399).contains(value) else { return }
-    setDuration(value)
-    remaining = value
-    total = value
-    recents = Array(([value] + recents.filter { $0 != value }).prefix(8))
-    phase = .running
+    let instant = clock()
+    var candidate = saved
+    candidate.active = ActiveSession(
+      id: UUID(), startedAt: instant, plannedSeconds: value, runningSince: instant)
+    candidate.lastDuration = value
+    candidate.recents = Array(([value] + candidate.recents.filter { $0 != value }).prefix(8))
+    if commit(candidate) {
+      now = instant
+      setDuration(value)
+      phase = .running
+    }
+  }
+
+  func pauseOrResume() {
+    refresh(retry: true)
+    guard storageError == nil, var active = saved.active else { return }
+    let instant = clock()
+    if active.runningSince != nil {
+      active.stop(at: instant)
+    } else {
+      active.runningSince = instant
+    }
+    var candidate = saved
+    candidate.active = active
+    if commit(candidate) {
+      now = instant
+      phase = active.runningSince == nil ? .paused : .running
+    }
   }
 
   func reset() {
-    showReset = false
-    setDuration(total)
-    phase = .setup
+    refresh(retry: true)
+    guard loaded, storageError == nil else { return }
+    var candidate = saved
+    var records: [FocusSession] = []
+    if let active = candidate.active {
+      let record = active.record(outcome: .cancelled, at: clock())
+      if record.focusedSeconds > 0 { records.append(record) }
+    }
+    candidate.active = nil
+    if commit(candidate, adding: records) {
+      showReset = false
+      setDuration(saved.lastDuration)
+      phase = .setup
+    }
   }
 
-  func preview(_ preview: Preview) {
-    showReset = false
-    if preview == .homeData || preview == .homeEmpty {
-      emptyHome = preview == .homeEmpty
-      section = .home
-      return
+  func refresh(retry: Bool = false) {
+    now = clock()
+    guard storageError == nil || retry else { return }
+    guard let active = saved.active, let deadline = active.deadline, now >= deadline else { return }
+    var candidate = saved
+    candidate.active = nil
+    if commit(candidate, adding: [active.record(outcome: .completed, at: deadline)]) {
+      phase = .finished
+      showReset = false
     }
-    section = .timer
-    setDuration(preview == .error ? 0 : 1500)
-    total = 1500
-    remaining = preview == .finished ? 0 : 754
-    switch preview {
-    case .setup, .error: phase = .setup
-    case .paused: phase = .paused
-    case .finished: phase = .finished
-    default: phase = .running
+  }
+
+  func reload() throws {
+    if store == nil { store = try SQLiteFocusStore() }
+    guard let store else { return }
+    let (snapshot, records) = try store.load()
+    saved = snapshot
+    sessions = records
+    loaded = true
+    storageError = nil
+    setDuration(saved.lastDuration)
+    phase = saved.active.map { $0.runningSince == nil ? .paused : .running } ?? .setup
+    refresh()
+  }
+
+  func retryStorage() {
+    if loaded {
+      if commit(saved) { refresh() }
+    } else {
+      do { try reload() } catch { storageError = error.localizedDescription }
     }
-    showReset = preview == .dialog
+  }
+
+  private func commit(_ candidate: SavedFocusState, adding records: [FocusSession] = []) -> Bool {
+    guard loaded, let store else { return false }
+    do {
+      try store.save(candidate, adding: records)
+      saved = candidate
+      let existing = Set(sessions.map(\.id))
+      sessions = (records.filter { !existing.contains($0.id) } + sessions).sorted {
+        $0.endedAt > $1.endedAt
+      }
+      storageError = nil
+      return true
+    } catch {
+      storageError = "Your change could not be saved. \(error.localizedDescription)"
+      return false
+    }
   }
 
   static func time(_ seconds: Int) -> String {

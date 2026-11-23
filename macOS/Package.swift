@@ -12,6 +12,9 @@ let package = Package(
         .defaultIsolation(MainActor.self),
         .enableUpcomingFeature("NonisolatedNonsendingByDefault"),
       ]
-    )
+    ),
+    .testTarget(
+      name: "FocusTests", dependencies: ["Focus"],
+      swiftSettings: [.defaultIsolation(MainActor.self)]),
   ]
 )

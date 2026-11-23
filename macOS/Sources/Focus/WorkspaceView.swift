@@ -1,20 +1,33 @@
 import SwiftUI
 
 struct WorkspaceView: View {
-  @State private var state = InterfaceState()
-  @Environment(\.colorScheme) private var systemScheme
+  @Bindable var state: InterfaceState
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     HStack(spacing: 0) {
       sidebar
       Divider()
       ScrollView {
-        Group {
-          switch state.section {
-          case .home: HomeView(state: state)
-          case .timer: TimersView(state: state)
-          case .statistics, .settings: placeholder
+        VStack(spacing: 20) {
+          if let error = state.storageError {
+            Surface {
+              VStack(alignment: .leading, spacing: 12) {
+                Label("Unable to save data", systemImage: "exclamationmark.triangle").font(
+                  .headline)
+                Text(error).font(.callout).foregroundStyle(.secondary)
+                Button("Retry storage") { state.retryStorage() }.buttonStyle(ActionStyle())
+              }.frame(maxWidth: .infinity, alignment: .leading)
+            }
           }
+          Group {
+            switch state.section {
+            case .home: HomeView(state: state)
+            case .timer: TimersView(state: state)
+            case .statistics: StatisticsView(state: state)
+            case .settings: settings
+            }
+          }.disabled(!state.loaded)
         }
         .padding(40)
         .frame(maxWidth: 1120)
@@ -25,12 +38,22 @@ struct WorkspaceView: View {
     .background(Color.panel)
     .preferredColorScheme(state.dark ? .dark : .light)
     .tint(.blue)
-    .onAppear { state.dark = systemScheme == .dark }
+    .task {
+      while !Task.isCancelled {
+        state.refresh()
+        do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+      }
+    }
+    .onChange(of: scenePhase) { _, phase in
+      if phase == .active { state.refresh() }
+    }
     .alert("Reset timer?", isPresented: $state.showReset) {
       Button("Cancel", role: .cancel) {}
       Button("Reset", role: .destructive) { state.reset() }
     } message: {
-      Text("Return to duration setup? This interface preview does not save sessions.")
+      Text(
+        "Stop this session and return to duration setup? Time already focused will be saved in your history."
+      )
     }
   }
 
@@ -63,41 +86,33 @@ struct WorkspaceView: View {
       Toggle("Dark mode", isOn: $state.dark).toggleStyle(.switch)
         .font(.system(size: 13)).padding(.horizontal, 12).padding(.top, 28)
       Spacer(minLength: 40)
-      VStack(alignment: .leading, spacing: 8) {
-        Text("Prototype preview").font(.system(size: 11, weight: .medium)).foregroundStyle(
-          .secondary)
-        Menu {
-          ForEach(InterfaceState.Preview.allCases) { preview in
-            Button(preview.rawValue) { state.preview(preview) }
-          }
-        } label: {
-          HStack {
-            Text("Choose a state")
-            Spacer()
-            Image(systemName: "chevron.up.chevron.down")
-          }
-        }
-        .menuStyle(.borderlessButton)
-        .padding(10).background(Color.selection, in: RoundedRectangle(cornerRadius: 8))
-        Text("Interface preview · No data saved")
-          .font(.system(size: 10)).foregroundStyle(.secondary)
-      }
+      Label(
+        state.storageError == nil ? "Saved on this Mac" : "Storage needs attention",
+        systemImage: state.storageError == nil ? "internaldrive" : "exclamationmark.triangle"
+      )
+      .font(.system(size: 11)).foregroundStyle(.secondary)
       .padding(.horizontal, 6).padding(.bottom, 24)
     }
     .padding(.horizontal, 18).frame(width: 232)
   }
 
-  private var placeholder: some View {
-    let stats = state.section == .statistics
-    return VStack(spacing: 30) {
-      PageHeading(
-        title: stats ? "Statistics" : "Settings",
-        subtitle: stats ? "Your focus session history and trends." : "Personalize your workspace.")
-      EmptyPanel(
-        symbol: stats ? "chart.bar" : "gearshape", title: "Coming soon",
-        message: stats
-          ? "Detailed statistics will be available in a future update."
-          : "More settings will be available in a future update.")
+  private var settings: some View {
+    VStack(alignment: .leading, spacing: 24) {
+      PageHeading(title: "Settings", subtitle: "Personalize your workspace.")
+      Surface {
+        VStack(alignment: .leading, spacing: 20) {
+          Toggle("Dark mode", isOn: $state.dark).toggleStyle(.switch)
+          Divider()
+          Label("Local storage", systemImage: "internaldrive").font(.headline)
+          Text("Your sessions, timer and preferences are saved automatically on this Mac.")
+            .foregroundStyle(.secondary)
+          Text(SQLiteFocusStore.defaultURL.path).font(.system(size: 12)).textSelection(.enabled)
+          Text(
+            "The timer continues during sleep and while the app is closed. Pause it to stop tracking time."
+          )
+          .font(.system(size: 12)).foregroundStyle(.secondary)
+        }.frame(maxWidth: .infinity, alignment: .leading)
+      }
     }
   }
 }

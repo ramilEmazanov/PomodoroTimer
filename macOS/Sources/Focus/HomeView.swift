@@ -2,68 +2,71 @@ import SwiftUI
 
 struct HomeView: View {
   @Bindable var state: InterfaceState
-  private let tasks: [(String, Bool, String)] = [
-    ("Outline the presentation", true, "45 min"),
-    ("Review incoming messages", true, "25 min"),
-    ("Update the project plan", true, "35 min"),
-    ("Review interface designs", false, "25 min"),
-    ("Reflect on the day", false, "15 min"),
-  ]
 
   var body: some View {
     VStack(alignment: .leading, spacing: 24) {
       VStack(alignment: .leading, spacing: 12) {
         PageHeading(title: "Home")
-        Text(Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day()))
+        Text(state.now.formatted(.dateTime.weekday(.wide).month(.wide).day()))
           .font(.system(size: 13)).foregroundStyle(.secondary)
       }
-      if state.emptyHome {
+      if state.sessions.isEmpty && state.saved.active == nil {
         EmptyPanel(
           symbol: "scope", title: "Start your first session",
-          message: "Your focus time and completed tasks will appear here."
+          message: "Your focus time and completed sessions will appear here."
         ) { state.section = .timer }
       } else {
-        ViewThatFits(in: .horizontal) {
-          HStack(spacing: 14) { metrics }
-          VStack(spacing: 14) { metrics }
-        }
+        FocusSummary(state: state)
         Surface {
-          VStack(alignment: .leading, spacing: 24) {
+          VStack(alignment: .leading, spacing: 20) {
             HStack {
-              VStack(alignment: .leading, spacing: 6) {
-                Text("Today’s tasks").font(.system(size: 20, weight: .semibold))
-                Text("3 of 5 completed").font(.system(size: 13)).foregroundStyle(.secondary)
-              }
+              Text("Recent sessions").font(.system(size: 20, weight: .semibold))
               Spacer()
-              Button("Start Focus") { state.section = .timer }.buttonStyle(ActionStyle())
-            }
-            VStack(spacing: 0) {
-              ForEach(tasks.indices, id: \.self) { index in
-                let task = tasks[index]
-                HStack(spacing: 14) {
-                  Image(systemName: task.1 ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20)).foregroundStyle(task.1 ? Color.blue : Color.secondary)
-                  Text(task.0).strikethrough(task.1).foregroundStyle(task.1 ? .secondary : .primary)
-                  Spacer(minLength: 12)
-                  Text(task.2).font(.system(size: 13)).foregroundStyle(.secondary)
-                }
-                .frame(minHeight: 56)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(task.0), \(task.1 ? "completed" : "incomplete"), \(task.2)")
-                if index < tasks.count - 1 { Divider().opacity(0.5) }
+              Button(state.saved.active == nil ? "Start Focus" : "Open timer") {
+                state.section = .timer
               }
+              .buttonStyle(ActionStyle())
+            }
+            if state.saved.active != nil {
+              Label(
+                state.phase == .paused ? "Your session is paused" : "A focus session is running",
+                systemImage: "timer"
+              )
+              .foregroundStyle(.secondary)
+            }
+            if state.sessions.isEmpty {
+              Text("Completed and interrupted sessions will appear here.").foregroundStyle(
+                .secondary)
+            } else {
+              SessionHistoryList(sessions: Array(state.sessions.prefix(5)))
             }
           }
         }
-        Text("Sample tasks and focus totals").font(.system(size: 11)).foregroundStyle(.secondary)
       }
+    }
+  }
+}
+
+struct FocusSummary: View {
+  let state: InterfaceState
+  private var today: DateInterval { Calendar.current.dateInterval(of: .day, for: state.now)! }
+  private var week: DateInterval { Calendar.current.dateInterval(of: .weekOfYear, for: state.now)! }
+
+  var body: some View {
+    ViewThatFits(in: .horizontal) {
+      HStack(spacing: 14) { metrics }
+      VStack(spacing: 14) { metrics }
     }
   }
 
   @ViewBuilder private var metrics: some View {
-    metric("Focus today", "1 h 45 min", "18 min more than yesterday", accent: true)
-    metric("Focus this week", "8 h 20 min", "12% more than last week")
-    metric("Sessions completed", "4", "Your best this week")
+    metric(
+      "Focus today", FocusHistory.display(state.history.focusedSeconds(in: today)),
+      "Actual time, excluding pauses", accent: true)
+    metric(
+      "Focus this week", FocusHistory.display(state.history.focusedSeconds(in: week)),
+      "Includes interrupted sessions")
+    metric("Sessions completed", "\(state.history.completed(in: today))", "Completed today")
   }
 
   private func metric(_ title: String, _ value: String, _ note: String, accent: Bool = false)
@@ -71,7 +74,7 @@ struct HomeView: View {
   {
     VStack(alignment: .leading, spacing: 12) {
       Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
-      Text(value).font(.system(size: 25, weight: .semibold)).tracking(-0.5)
+      Text(value).font(.system(size: 25, weight: .semibold)).tracking(-0.5).monospacedDigit()
       Text(note).font(.system(size: 11)).foregroundStyle(.secondary)
     }
     .frame(minWidth: 155, maxWidth: .infinity, minHeight: 100, alignment: .leading)
@@ -79,5 +82,36 @@ struct HomeView: View {
     .background(
       accent ? Color(light: 0xEDF6FF, dark: 0x233243) : Color.panel,
       in: RoundedRectangle(cornerRadius: 22))
+  }
+}
+
+struct SessionHistoryList: View {
+  let sessions: [FocusSession]
+  var body: some View {
+    VStack(spacing: 0) {
+      ForEach(sessions) { session in
+        HStack(spacing: 14) {
+          Image(systemName: session.outcome == .completed ? "checkmark.circle.fill" : "stop.circle")
+            .font(.system(size: 22)).foregroundStyle(
+              session.outcome == .completed ? .green : .secondary)
+          VStack(alignment: .leading, spacing: 5) {
+            Text(session.outcome == .completed ? "Focus completed" : "Session interrupted").font(
+              .system(size: 14, weight: .medium))
+            Text(session.startedAt.formatted(date: .abbreviated, time: .shortened))
+              .font(.system(size: 12)).foregroundStyle(.secondary)
+          }
+          Spacer(minLength: 12)
+          VStack(alignment: .trailing, spacing: 5) {
+            Text(FocusHistory.display(session.focusedSeconds)).monospacedDigit()
+            Text("of \(InterfaceState.durationLabel(session.plannedSeconds))").font(
+              .system(size: 11)
+            ).foregroundStyle(.secondary)
+          }
+        }
+        .padding(.vertical, 14)
+        .accessibilityElement(children: .combine)
+        Divider()
+      }
+    }
   }
 }
