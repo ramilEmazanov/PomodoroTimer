@@ -10,6 +10,13 @@ React + Vite + Tailwind CSS project exported from Figma Make.
 - Use `pnpm format` for formatting.
 - After completing changes and passing the required checks, create a Git commit with a clear message describing the changes. Commit only files relevant to the task. Do not push unless explicitly requested. Skip the commit if the user asks not to commit.
 
+## Native macOS interface
+
+- `macOS/` — standalone SwiftUI interface prototype; see `macOS/README.md`.
+- Build native changes with `cd macOS && swift build`; package with `bash macOS/scripts/build-app.sh` from the repository root.
+- Format Swift with `swift format format --in-place --recursive macOS/Sources macOS/Package.swift`.
+- UI state is in memory only. Do not add persistence or backend behavior unless requested.
+
 ## Project Structure
 
 - `src/main.tsx` — React entrypoint.
