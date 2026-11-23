@@ -20,8 +20,6 @@ React + Vite + Tailwind CSS project exported from Figma Make.
 - `src/utils/formatTime.ts` — timer display formatting.
 - `src/styles/index.css` — global styles and Tailwind entrypoint.
 - `public/` — static assets.
-- `task.md` — coursework requirements.
-- `submission/` — product scenario and mockup creation notes.
 - `config/vite.config.ts` — local Vite configuration; no Figma runtime required.
 
 Read task-relevant files first. Follow imports only as needed.
