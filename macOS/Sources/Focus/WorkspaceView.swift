@@ -20,6 +20,8 @@ struct WorkspaceView: View {
         }
         if state.section == .tasks {
           TasksView(state: state).disabled(!state.loaded)
+        } else if state.section == .projects {
+          ProjectsView(state: state).disabled(!state.loaded)
         } else {
           ScrollView {
             Group {
@@ -28,7 +30,7 @@ struct WorkspaceView: View {
               case .timer: TimersView(state: state)
               case .statistics: StatisticsView(state: state)
               case .settings: settings
-              case .tasks: EmptyView()
+              case .tasks, .projects: EmptyView()
               }
             }
             .disabled(!state.loaded)

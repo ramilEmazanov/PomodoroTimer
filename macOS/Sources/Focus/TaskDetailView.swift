@@ -32,6 +32,28 @@ struct TaskDetailView: View {
             .accessibilityLabel(task.isImportant ? "Remove importance" : "Mark important")
           }
           VStack(alignment: .leading, spacing: 12) {
+            Label(
+              FocusHistory.display(state.focusedSeconds(taskID: task.id)) + " focused",
+              systemImage: "timer"
+            )
+            .font(.system(size: 16, weight: .medium)).monospacedDigit()
+            Button("Set timer for this task") { state.prepareTimer(for: task.id) }
+              .buttonStyle(.borderless).disabled(state.saved.active != nil)
+            Picker(
+              "Project",
+              selection: Binding(
+                get: { task.projectID },
+                set: { value in state.editTask(task.id) { $0.projectID = value } }
+              )
+            ) {
+              Text("No project").tag(nil as UUID?)
+              ForEach(state.projects) { project in
+                Text(project.title).tag(Optional(project.id))
+              }
+            }
+          }
+          Divider()
+          VStack(alignment: .leading, spacing: 12) {
             ForEach(task.subtasks) { subtask in
               HStack(alignment: .top, spacing: 10) {
                 CompletionButton(completed: subtask.isCompleted, label: subtask.title, small: true)

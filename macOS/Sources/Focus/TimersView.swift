@@ -20,6 +20,15 @@ struct TimersView: View {
 
   private var setup: some View {
     VStack(spacing: 16) {
+      Picker("Task", selection: $state.timerTaskID) {
+        Text("No task").tag(nil as UUID?)
+        ForEach(state.tasks) { task in
+          let project = state.projects.first { $0.id == task.projectID }
+          Text(project.map { "\($0.title) / \(task.title)" } ?? task.title)
+            .tag(Optional(task.id))
+        }
+      }
+      .frame(maxWidth: .infinity)
       DurationEntryModePicker(selection: $state.entryMode)
         .onChange(of: state.entryMode) { _, mode in
           if mode == .wheel { state.setDuration(min(86399, max(0, state.duration))) }
@@ -78,6 +87,17 @@ struct TimersView: View {
 
   private var active: some View {
     VStack(spacing: 30) {
+      if let assignment = state.saved.active?.assignment {
+        VStack(spacing: 5) {
+          Text(assignment.taskTitle).font(.headline).lineLimit(2)
+          if let title = assignment.projectTitle {
+            Label(title, systemImage: "folder").font(.callout).foregroundStyle(.secondary)
+              .lineLimit(1)
+          }
+        }
+        .multilineTextAlignment(.center)
+      }
+
       ZStack {
         Circle().stroke(Color.selection, lineWidth: 8)
         Circle()

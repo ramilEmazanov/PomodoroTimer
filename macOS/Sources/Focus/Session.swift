@@ -17,6 +17,7 @@ struct FocusSession: Codable, Identifiable, Equatable {
   let plannedSeconds: Int
   let outcome: Outcome
   let intervals: [FocusInterval]
+  var assignment: FocusAssignment?
 
   var focusedSeconds: TimeInterval {
     intervals.reduce(0) { $0 + max(0, $1.end.timeIntervalSince($1.start)) }
@@ -29,6 +30,7 @@ struct ActiveSession: Codable, Equatable {
   let plannedSeconds: Int
   var intervals: [FocusInterval] = []
   var runningSince: Date?
+  var assignment: FocusAssignment?
 
   var accumulated: TimeInterval {
     intervals.reduce(0) { $0 + max(0, $1.end.timeIntervalSince($1.start)) }
@@ -57,7 +59,8 @@ struct ActiveSession: Codable, Equatable {
     copy.stop(at: end)
     return FocusSession(
       id: id, startedAt: startedAt, endedAt: end,
-      plannedSeconds: plannedSeconds, outcome: outcome, intervals: copy.intervals)
+      plannedSeconds: plannedSeconds, outcome: outcome, intervals: copy.intervals,
+      assignment: assignment)
   }
 }
 
@@ -67,11 +70,12 @@ struct SavedFocusState: Codable, Equatable {
   var dark: Bool?
   var lastDuration = 1500
   var tasks: [FocusTask] = []
+  var projects: [FocusProject] = []
 
   init() {}
 
   private enum CodingKeys: String, CodingKey {
-    case active, recents, dark, lastDuration, tasks
+    case active, recents, dark, lastDuration, tasks, projects
   }
 
   // Version 1 snapshots predate Tasks. Keep their timer, history and preferences intact.
@@ -82,6 +86,7 @@ struct SavedFocusState: Codable, Equatable {
     dark = try values.decodeIfPresent(Bool.self, forKey: .dark)
     lastDuration = try values.decode(Int.self, forKey: .lastDuration)
     tasks = try values.decodeIfPresent([FocusTask].self, forKey: .tasks) ?? []
+    projects = try values.decodeIfPresent([FocusProject].self, forKey: .projects) ?? []
   }
 }
 

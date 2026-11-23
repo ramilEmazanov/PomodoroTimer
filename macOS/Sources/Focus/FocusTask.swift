@@ -16,6 +16,7 @@ struct FocusTask: Codable, Identifiable, Equatable {
   var dueDate: Date?
   var note = ""
   var subtasks: [FocusSubtask] = []
+  var projectID: UUID?
 
   var completedSteps: Int { subtasks.filter(\.isCompleted).count }
 
@@ -51,4 +52,18 @@ enum TaskSort: String, CaseIterable, Identifiable {
       return left.id.uuidString < right.id.uuidString
     }
   }
+}
+
+struct FocusProject: Codable, Identifiable, Equatable {
+  let id: UUID
+  var title: String
+  let createdAt: Date
+}
+
+// Capture attribution at session start so moves and deletions never rewrite history.
+struct FocusAssignment: Codable, Equatable {
+  let taskID: UUID
+  let taskTitle: String
+  let projectID: UUID?
+  let projectTitle: String?
 }

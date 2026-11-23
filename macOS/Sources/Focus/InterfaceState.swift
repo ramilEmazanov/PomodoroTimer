@@ -6,6 +6,7 @@ final class InterfaceState {
     case home = "Home"
     case timer = "Timer"
     case tasks = "Tasks"
+    case projects = "Projects"
     case statistics = "Statistics"
     case settings = "Settings"
     var id: Self { self }
@@ -14,6 +15,7 @@ final class InterfaceState {
       case .home: "house"
       case .timer: "timer"
       case .tasks: "checklist"
+      case .projects: "folder"
       case .statistics: "chart.bar"
       case .settings: "gearshape"
       }
@@ -30,11 +32,13 @@ final class InterfaceState {
   var entryMode: EntryMode = .wheel
   var fields = ["00", "25", "00"]
   var showReset = false
+  var timerTaskID: UUID?
   var storageError: String?
   private(set) var phase: TimerPhase = .setup
   private(set) var saved = SavedFocusState()
   private(set) var sessions: [FocusSession] = []
   private(set) var pendingTasks: [FocusTask]?
+  private(set) var pendingProjects: [FocusProject]?
   private(set) var now: Date
   private(set) var loaded = false
   @ObservationIgnored private var store: (any FocusStorage)?
@@ -96,8 +100,15 @@ final class InterfaceState {
     guard (1...86399).contains(value) else { return }
     let instant = clock()
     var candidate = saved
+    let task = tasks.first { $0.id == timerTaskID }
+    let assignment = task.map { task in
+      FocusAssignment(
+        taskID: task.id, taskTitle: task.title, projectID: task.projectID,
+        projectTitle: projects.first { $0.id == task.projectID }?.title)
+    }
     candidate.active = ActiveSession(
-      id: UUID(), startedAt: instant, plannedSeconds: value, runningSince: instant)
+      id: UUID(), startedAt: instant, plannedSeconds: value, runningSince: instant,
+      assignment: assignment)
     candidate.lastDuration = value
     candidate.recents = Array(([value] + candidate.recents.filter { $0 != value }).prefix(8))
     if commit(candidate) {
@@ -179,9 +190,11 @@ final class InterfaceState {
     do {
       var candidate = candidate
       candidate.tasks = pendingTasks ?? candidate.tasks
+      candidate.projects = pendingProjects ?? candidate.projects
       try store.save(candidate, adding: records)
       saved = candidate
       pendingTasks = nil
+      pendingProjects = nil
       let existing = Set(sessions.map(\.id))
       sessions = (records.filter { !existing.contains($0.id) } + sessions).sorted {
         $0.endedAt > $1.endedAt
@@ -197,11 +210,14 @@ final class InterfaceState {
   var tasks: [FocusTask] { pendingTasks ?? saved.tasks }
 
   @discardableResult
-  func addTask(title: String) -> UUID? {
+  func addTask(title: String, projectID: UUID? = nil) -> UUID? {
     let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard loaded, !title.isEmpty else { return nil }
+    guard loaded, !title.isEmpty,
+      projectID == nil || projects.contains(where: { $0.id == projectID })
+    else { return nil }
     let instant = clock()
-    let task = FocusTask(id: UUID(), title: title, createdAt: instant, updatedAt: instant)
+    let task = FocusTask(
+      id: UUID(), title: title, createdAt: instant, updatedAt: instant, projectID: projectID)
     saveTasks([task] + tasks)
     return task.id
   }
@@ -212,6 +228,10 @@ final class InterfaceState {
     change(&updated[index])
     let title = updated[index].title.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !title.isEmpty else { return }
+    guard
+      updated[index].projectID == nil
+        || projects.contains(where: { $0.id == updated[index].projectID })
+    else { return }
     updated[index].title = title
     guard updated[index] != tasks[index] else { return }
     updated[index].updatedAt = clock()
@@ -221,6 +241,7 @@ final class InterfaceState {
   func deleteTask(_ id: UUID) {
     guard loaded, tasks.contains(where: { $0.id == id }) else { return }
     saveTasks(tasks.filter { $0.id != id })
+    if timerTaskID == id { timerTaskID = nil }
   }
 
   @discardableResult
@@ -246,6 +267,59 @@ final class InterfaceState {
     // Retain unsaved edits on screen if disk writes fail; Retry storage commits them later.
     pendingTasks = tasks
     _ = commit(saved)
+  }
+
+  var projects: [FocusProject] { pendingProjects ?? saved.projects }
+
+  @discardableResult
+  func addProject(title: String) -> UUID? {
+    let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard loaded, !title.isEmpty else { return nil }
+    let project = FocusProject(id: UUID(), title: title, createdAt: clock())
+    pendingProjects = [project] + projects
+    _ = commit(saved)
+    return project.id
+  }
+
+  func renameProject(_ id: UUID, title: String) {
+    let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard loaded, !title.isEmpty, let index = projects.firstIndex(where: { $0.id == id }) else {
+      return
+    }
+    var updated = projects
+    updated[index].title = title
+    pendingProjects = updated
+    _ = commit(saved)
+  }
+
+  func deleteProject(_ id: UUID) {
+    guard loaded, projects.contains(where: { $0.id == id }) else { return }
+    pendingProjects = projects.filter { $0.id != id }
+    pendingTasks = tasks.map { task in
+      var task = task
+      if task.projectID == id { task.projectID = nil }
+      return task
+    }
+    _ = commit(saved)
+  }
+
+  func prepareTimer(for taskID: UUID) {
+    guard saved.active == nil, tasks.contains(where: { $0.id == taskID }) else { return }
+    timerTaskID = taskID
+    if phase == .finished { phase = .setup }
+    section = .timer
+  }
+
+  func focusedSeconds(taskID: UUID? = nil, projectID: UUID? = nil) -> TimeInterval {
+    func matches(_ assignment: FocusAssignment?) -> Bool {
+      guard let assignment else { return false }
+      if let taskID { return assignment.taskID == taskID }
+      if let projectID { return assignment.projectID == projectID }
+      return false
+    }
+    let recorded = sessions.filter { matches($0.assignment) }.reduce(0) { $0 + $1.focusedSeconds }
+    guard let active = saved.active, matches(active.assignment) else { return recorded }
+    return recorded + Double(active.plannedSeconds) - active.remaining(at: now)
   }
 
   static func time(_ seconds: Int) -> String {

@@ -97,6 +97,13 @@ struct SessionHistoryList: View {
           VStack(alignment: .leading, spacing: 5) {
             Text(session.outcome == .completed ? "Focus completed" : "Session interrupted").font(
               .system(size: 14, weight: .medium))
+            if let assignment = session.assignment {
+              Text(assignment.taskTitle).font(.system(size: 13)).lineLimit(2)
+              if let project = assignment.projectTitle {
+                Label(project, systemImage: "folder").font(.system(size: 11))
+                  .foregroundStyle(.secondary).lineLimit(1)
+              }
+            }
             Text(session.startedAt.formatted(date: .abbreviated, time: .shortened))
               .font(.system(size: 12)).foregroundStyle(.secondary)
           }

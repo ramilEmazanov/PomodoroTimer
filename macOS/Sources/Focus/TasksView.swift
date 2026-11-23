@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TasksView: View {
   @Bindable var state: InterfaceState
+  var projectID: UUID? = nil
   @State private var selection: UUID?
   @State private var newTitle = ""
   @State private var sort: TaskSort = .dueDate
@@ -17,9 +18,14 @@ struct TasksView: View {
     var id: Self { self }
   }
 
+  private var project: FocusProject? { state.projects.first { $0.id == projectID } }
+  private var scopedTasks: [FocusTask] {
+    state.tasks.filter { projectID == nil || $0.projectID == projectID }
+  }
+
   private var visibleTasks: [FocusTask] {
     sort.sorted(
-      state.tasks.filter { task in
+      scopedTasks.filter { task in
         switch filter {
         case .all: true
         case .active: !task.isCompleted
@@ -102,7 +108,8 @@ struct TasksView: View {
     VStack(alignment: .leading, spacing: 0) {
       VStack(alignment: .leading, spacing: 16) {
         HStack {
-          Text("Tasks").font(.system(size: 36, weight: .bold)).tracking(-1)
+          Text(project?.title ?? "Tasks").font(.system(size: 36, weight: .bold)).tracking(-1)
+            .lineLimit(2).textSelection(.enabled)
           Spacer()
           Button {
             composerFocused = true
@@ -113,9 +120,16 @@ struct TasksView: View {
           .help("New task (⌘N)").accessibilityLabel("New task")
         }
         Text(
-          "\(state.tasks.filter { !$0.isCompleted }.count) active · \(state.tasks.filter(\.isCompleted).count) completed"
+          "\(scopedTasks.filter { !$0.isCompleted }.count) active · \(scopedTasks.filter(\.isCompleted).count) completed"
         )
         .font(.system(size: 12)).foregroundStyle(.secondary)
+        if let project {
+          Label(
+            FocusHistory.display(state.focusedSeconds(projectID: project.id)) + " focused",
+            systemImage: "timer"
+          )
+          .font(.system(size: 16, weight: .medium)).monospacedDigit()
+        }
         HStack {
           Menu {
             Picker("Sort tasks", selection: $sort) {
@@ -147,10 +161,10 @@ struct TasksView: View {
             VStack(spacing: 12) {
               Image(systemName: "checklist")
                 .font(.system(size: 28, weight: .light))
-              Text(state.tasks.isEmpty ? "Make room for what matters" : "No matching tasks").font(
+              Text(scopedTasks.isEmpty ? "Make room for what matters" : "No matching tasks").font(
                 .headline)
               Text(
-                state.tasks.isEmpty
+                scopedTasks.isEmpty
                   ? "Add your first task below, then break it into smaller steps."
                   : "Try another task filter."
               )
@@ -171,7 +185,7 @@ struct TasksView: View {
       Spacer(minLength: 0)
       HStack(spacing: 10) {
         Image(systemName: "plus").foregroundStyle(.blue)
-        TextField("Add a task", text: $newTitle)
+        TextField(project == nil ? "Add a task" : "Add a task to this project", text: $newTitle)
           .textFieldStyle(.plain).focused($composerFocused)
           .onSubmit { addTask(compact: compact) }
         Button("Add") { addTask(compact: compact) }
@@ -184,7 +198,7 @@ struct TasksView: View {
   }
 
   private func addTask(compact: Bool) {
-    guard let id = state.addTask(title: newTitle) else { return }
+    guard let id = state.addTask(title: newTitle, projectID: projectID) else { return }
     selection = id
     newTitle = ""
     filter = .all
@@ -196,12 +210,29 @@ struct TasksView: View {
       CompletionButton(completed: task.isCompleted, label: task.title) {
         state.editTask(task.id) { $0.isCompleted.toggle() }
       }
+      Button {
+        state.prepareTimer(for: task.id)
+      } label: {
+        Image(systemName: state.saved.active?.assignment?.taskID == task.id ? "timer" : "play.fill")
+          .font(.system(size: 12)).foregroundStyle(.blue)
+          .frame(width: 28, height: 30).contentShape(Rectangle())
+      }
+      .buttonStyle(.plain).disabled(state.saved.active != nil)
+      .help("Set timer for this task").accessibilityLabel("Set timer for \(task.title)")
       Button(action: select) {
         VStack(alignment: .leading, spacing: 3) {
           Text(task.title).font(.system(size: 15, weight: .medium))
             .strikethrough(task.isCompleted)
             .foregroundStyle(task.isCompleted ? .secondary : .primary)
             .lineLimit(2).multilineTextAlignment(.leading)
+          Text(FocusHistory.display(state.focusedSeconds(taskID: task.id)) + " focused")
+            .font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit()
+          if projectID == nil,
+            let project = state.projects.first(where: { $0.id == task.projectID })
+          {
+            Label(project.title, systemImage: "folder").font(.system(size: 11))
+              .foregroundStyle(.secondary).lineLimit(1)
+          }
           if !task.subtasks.isEmpty || task.dueDate != nil || !task.note.isEmpty {
             HStack(spacing: 8) {
               if !task.subtasks.isEmpty {
