@@ -222,7 +222,7 @@ struct TasksView: View {
 
   private func taskRow(_ task: FocusTask, select: @escaping () -> Void) -> some View {
     HStack(alignment: .center, spacing: 12) {
-      CompletionButton(completed: task.isCompleted, label: task.title) {
+      CompletionButton(completed: task.isCompleted, label: task.title, symbolSize: 20) {
         state.editTask(task.id) { $0.isCompleted.toggle() }
       }
       Button(action: select) {
@@ -302,11 +302,12 @@ struct CompletionButton: View {
   let completed: Bool
   let label: String
   var small = false
+  var symbolSize: CGFloat = 23
   let action: () -> Void
   var body: some View {
     Button(action: action) {
       Image(systemName: completed ? "checkmark.circle.fill" : "circle")
-        .font(.system(size: small ? 19 : 23, weight: .regular))
+        .font(.system(size: small ? 19 : symbolSize, weight: .regular))
         .foregroundStyle(completed ? Color.blue : .secondary)
         .frame(width: small ? 24 : 28, height: 30)
         .contentShape(Rectangle())
