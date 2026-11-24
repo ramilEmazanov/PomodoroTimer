@@ -219,8 +219,9 @@ struct TasksView: View {
         .padding(.horizontal, 24).padding(.bottom, 16)
       }
       Spacer(minLength: 0)
-      HStack(spacing: 10) {
+      HStack(spacing: 12) {
         Image(systemName: "plus").foregroundStyle(.blue)
+          .frame(width: 28, height: 30)
         TextField(project == nil ? "Add a task" : "Add a task to this project", text: $newTitle)
           .textFieldStyle(.plain).focused($composerFocused)
           .onSubmit { addTask(compact: compact) }
@@ -228,7 +229,9 @@ struct TasksView: View {
           .buttonStyle(.borderless)
           .disabled(newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
       }
-      .padding(14).background(Color.panel, in: RoundedRectangle(cornerRadius: 12))
+      .font(.system(size: 15, weight: .medium))
+      .padding(.horizontal, 14).frame(height: 52)
+      .background(Color.panel, in: RoundedRectangle(cornerRadius: 10))
       .padding(24)
     }
   }
