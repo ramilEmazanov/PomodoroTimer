@@ -60,28 +60,20 @@ struct TasksView: View {
       HStack(spacing: 0) {
         taskList(compact: compact)
           .frame(maxWidth: .infinity, maxHeight: .infinity)
-        if !compact {
+        if !compact, let task = selectedTask {
           Divider()
-          Group {
-            if let task = selectedTask {
-              detail(task)
-            } else {
-              VStack(spacing: 12) {
-                Image(systemName: "checklist").font(.system(size: 34, weight: .light))
-                Text("Select a task").font(.headline)
-                Text("Its steps, due date and note will appear here.")
-                  .font(.callout).multilineTextAlignment(.center)
-              }
-              .foregroundStyle(.secondary).padding(28)
-              .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-          }
-          .frame(width: min(360, geometry.size.width * 0.42))
-          .background(Color.panel)
+          detail(task)
+            .frame(width: min(360, geometry.size.width * 0.42))
+            .background(Color.panel)
         }
       }
       .onChange(of: compact) { _, value in if !value { showCompactDetail = false } }
-      .sheet(isPresented: $showCompactDetail) {
+      .sheet(
+        isPresented: $showCompactDetail,
+        onDismiss: {
+          if compact { selection = nil }
+        }
+      ) {
         ZoomedInterface {
           VStack(spacing: 0) {
             HStack {
@@ -170,53 +162,57 @@ struct TasksView: View {
         }
       }
       .padding(24)
-      ScrollView {
-        LazyVStack(spacing: 5) {
-          if scopedTasks.isEmpty {
-            VStack(spacing: 12) {
-              Image(systemName: "checklist")
-                .font(.system(size: 28, weight: .light))
-              Text("Make room for what matters").font(.headline)
-              Text("Add your first task below, then break it into smaller steps.")
-                .font(.callout).multilineTextAlignment(.center)
-            }
-            .foregroundStyle(.secondary).padding(.vertical, 48).padding(.horizontal, 16)
-            .frame(maxWidth: .infinity)
-          }
-          ForEach(listEntries) { entry in
-            switch entry {
-            case .task(let task):
-              taskRow(task) {
-                selection = task.id
-                if compact { showCompactDetail = true }
+      GeometryReader { listGeometry in
+        ScrollView {
+          LazyVStack(spacing: 5) {
+            if scopedTasks.isEmpty {
+              VStack(spacing: 12) {
+                Image(systemName: "checklist")
+                  .font(.system(size: 28, weight: .light))
+                Text("Make room for what matters").font(.headline)
+                Text("Add your first task below, then break it into smaller steps.")
+                  .font(.callout).multilineTextAlignment(.center)
               }
-            case .completedHeader:
-              Button {
-                showCompletedTasks.toggle()
-              } label: {
-                HStack(spacing: 6) {
-                  Image(systemName: showCompletedTasks ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .frame(width: 12)
-                  Text("Completed Tasks")
+              .foregroundStyle(.secondary).padding(.vertical, 48).padding(.horizontal, 16)
+              .frame(maxWidth: .infinity)
+            }
+            ForEach(listEntries) { entry in
+              switch entry {
+              case .task(let task):
+                taskRow(task) {
+                  selection = task.id
+                  if compact { showCompactDetail = true }
                 }
-                .font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 8).padding(.vertical, 6)
-                .background(Color.panel, in: RoundedRectangle(cornerRadius: 6))
-                .contentShape(Rectangle())
+              case .completedHeader:
+                Button {
+                  showCompletedTasks.toggle()
+                } label: {
+                  HStack(spacing: 6) {
+                    Image(systemName: showCompletedTasks ? "chevron.down" : "chevron.right")
+                      .font(.system(size: 10, weight: .semibold))
+                      .frame(width: 12)
+                    Text("Completed Tasks")
+                  }
+                  .font(.system(size: 12, weight: .medium))
+                  .padding(.horizontal, 8).padding(.vertical, 6)
+                  .background(Color.panel, in: RoundedRectangle(cornerRadius: 6))
+                  .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).foregroundStyle(Color.blue)
+                .accessibilityLabel("Completed Tasks")
+                .accessibilityValue(
+                  showCompletedTasks ? "Expanded" : "Collapsed"
+                )
+                .accessibilityHint("Show or hide completed tasks")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 12).padding(.bottom, 4)
               }
-              .buttonStyle(.plain).foregroundStyle(Color.blue)
-              .accessibilityLabel("Completed Tasks")
-              .accessibilityValue(
-                showCompletedTasks ? "Expanded" : "Collapsed"
-              )
-              .accessibilityHint("Show or hide completed tasks")
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .padding(.top, 12).padding(.bottom, 4)
             }
           }
+          .padding(.horizontal, 24).padding(.bottom, 16)
+          .frame(minHeight: listGeometry.size.height, alignment: .top)
+          .background(deselectionBackground)
         }
-        .padding(.horizontal, 24).padding(.bottom, 16)
       }
       Spacer(minLength: 0)
       HStack(spacing: 12) {
@@ -234,6 +230,17 @@ struct TasksView: View {
       .background(Color.panel, in: RoundedRectangle(cornerRadius: 10))
       .padding(24)
     }
+    .background(deselectionBackground)
+  }
+
+  private var deselectionBackground: some View {
+    Color.clear
+      .contentShape(Rectangle())
+      .onTapGesture {
+        selection = nil
+        showCompactDetail = false
+        composerFocused = false
+      }
   }
 
   private func addTask(compact: Bool) {
