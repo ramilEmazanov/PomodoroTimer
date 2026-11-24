@@ -98,6 +98,7 @@ struct TaskDetailView: View {
           HStack(spacing: 12) {
             if task.isInMyDay {
               Label("Added to My Day", systemImage: "sun.max")
+                .fontWeight(.bold)
                 .foregroundStyle(Color.blue)
               Spacer(minLength: 8)
               Button {
