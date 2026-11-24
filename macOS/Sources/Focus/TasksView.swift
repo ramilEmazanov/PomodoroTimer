@@ -9,6 +9,7 @@ struct TasksView: View {
   @State private var showCompletedTasks = false
   @State private var showCompactDetail = false
   @State private var deletion: FocusTask?
+  @AppStorage(InterfaceZoom.storageKey) private var zoomPercentage = 100
   @FocusState private var composerFocused: Bool
 
   private var project: FocusProject? { state.projects.first { $0.id == projectID } }
@@ -54,18 +55,23 @@ struct TasksView: View {
       }
       .onChange(of: compact) { _, value in if !value { showCompactDetail = false } }
       .sheet(isPresented: $showCompactDetail) {
-        VStack(spacing: 0) {
-          HStack {
-            Text("Task details").font(.headline)
-            Spacer()
-            Button("Done") { showCompactDetail = false }.keyboardShortcut(.cancelAction)
+        ZoomedInterface {
+          VStack(spacing: 0) {
+            HStack {
+              Text("Task details").font(.headline)
+              Spacer()
+              Button("Done") { showCompactDetail = false }.keyboardShortcut(.cancelAction)
+            }
+            .padding(20)
+            Divider()
+            if let task = selectedTask { detail(task) }
           }
-          .padding(20)
-          Divider()
-          if let task = selectedTask { detail(task) }
+          .background(Color.panel)
         }
-        .frame(width: 440, height: 640)
-        .background(Color.panel)
+        .frame(
+          width: 440 * InterfaceZoom.scale(for: zoomPercentage),
+          height: 640 * InterfaceZoom.scale(for: zoomPercentage)
+        )
       }
     }
     .onChange(of: state.tasks.map(\.id)) { _, ids in
