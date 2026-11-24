@@ -122,10 +122,21 @@ struct FocusSummary: View {
   private func metric(_ title: String, _ value: String, _ note: String, accent: Bool = false)
     -> some View
   {
+    SummaryMetric(title: title, value: value, note: note, accent: accent)
+  }
+}
+
+struct SummaryMetric: View {
+  let title: String
+  let value: String
+  var note: String? = nil
+  var accent = false
+
+  var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
       Text(value).font(.system(size: 25, weight: .semibold)).tracking(-0.5).monospacedDigit()
-      Text(note).font(.system(size: 11)).foregroundStyle(.secondary)
+      if let note { Text(note).font(.system(size: 11)).foregroundStyle(.secondary) }
     }
     .frame(minWidth: 155, maxWidth: .infinity, minHeight: 100, alignment: .leading)
     .padding(20)

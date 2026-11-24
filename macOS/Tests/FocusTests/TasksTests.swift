@@ -17,6 +17,31 @@ private final class TaskTestStore: FocusStorage {
 
 @MainActor
 struct TasksTests {
+  @Test func completedTaskCountsRespectPeriodsAndReopening() throws {
+    let calendar = Calendar(identifier: .gregorian)
+    let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_800_000_000))
+    let day = try #require(calendar.dateInterval(of: .day, for: today))
+    let earlier = today.addingTimeInterval(-60)
+    var instant = earlier
+    let state = InterfaceState(store: TaskTestStore(), clock: { instant })
+    let oldTask = try #require(state.addTask(title: "Earlier"))
+    state.editTask(oldTask) { $0.isCompleted = true }
+    instant = today
+    let currentTask = try #require(state.addTask(title: "Today"))
+    state.editTask(currentTask) { $0.isCompleted = true }
+    _ = state.addTask(title: "Still active")
+    instant = day.end
+    let nextTask = try #require(state.addTask(title: "Next day"))
+    state.editTask(nextTask) { $0.isCompleted = true }
+    #expect(state.completedTaskCount() == 3)
+    #expect(state.completedTaskCount(in: day) == 1)
+    state.editTask(oldTask) { $0.note = "Edited today" }
+    #expect(state.completedTaskCount(in: day) == 1)
+    state.editTask(currentTask) { $0.isCompleted = false }
+    #expect(state.completedTaskCount() == 2)
+    #expect(state.completedTaskCount(in: day) == 0)
+  }
+
   @Test func myDaySurvivesRestartAndCanBeRemovedWithoutDeletingTask() throws {
     let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }

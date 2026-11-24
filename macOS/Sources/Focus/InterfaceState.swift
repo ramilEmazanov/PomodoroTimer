@@ -211,6 +211,15 @@ final class InterfaceState {
   var timerTasks: [FocusTask] { tasks.filter { !$0.isCompleted } }
   var myDayTasks: [FocusTask] { TaskSort.dueDate.sorted(tasks.filter(\.isInMyDay)) }
 
+  func completedTaskCount(in range: DateInterval? = nil) -> Int {
+    tasks.filter { task in
+      guard task.isCompleted else { return false }
+      guard let range else { return true }
+      let completion = task.completedAt ?? task.updatedAt
+      return completion >= range.start && completion < range.end
+    }.count
+  }
+
   func setMyDay(_ taskID: UUID, included: Bool) {
     guard let task = tasks.first(where: { $0.id == taskID }), task.isInMyDay != included else {
       return

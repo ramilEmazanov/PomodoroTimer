@@ -12,50 +12,37 @@ struct StatisticsSummary: View {
   }
 
   var body: some View {
-    ViewThatFits(in: .horizontal) {
-      HStack(spacing: 16) { cards }
-      VStack(spacing: 16) { cards }
+    VStack(spacing: 14) {
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: 14) { focusCards }
+        VStack(spacing: 14) { focusCards }
+      }
+      ViewThatFits(in: .horizontal) {
+        HStack(spacing: 14) { taskCards }
+        VStack(spacing: 14) { taskCards }
+      }
     }
   }
 
-  @ViewBuilder private var cards: some View {
-    card(
+  @ViewBuilder private var focusCards: some View {
+    timeCard(
       "Total Focus Time",
       seconds: state.history.focusedSeconds(in: DateInterval(start: .distantPast, end: state.now)))
-    card("Focus Time of This Week", seconds: state.history.focusedSeconds(in: week))
-    card("Focus Time of Today", seconds: state.history.focusedSeconds(in: today))
+    timeCard("Focus Time of This Week", seconds: state.history.focusedSeconds(in: week))
+    timeCard("Focus Time of Today", seconds: state.history.focusedSeconds(in: today))
   }
 
-  private func card(_ title: String, seconds: TimeInterval) -> some View {
-    let minutes = max(0, Int(seconds / 60))
-    let accent = Color(light: 0xE5484D, dark: 0xFF555B)
-    return VStack(alignment: .leading, spacing: 20) {
-      HStack(alignment: .top, spacing: 10) {
-        Capsule().fill(accent).frame(width: 4, height: 14).padding(.top, 4)
-        Text(title).font(.system(size: 17, weight: .medium))
-          .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-      }
-      .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
-      HStack(alignment: .firstTextBaseline, spacing: 3) {
-        Text("\(minutes / 60)")
-          .font(.system(size: 44, weight: .semibold).width(.condensed))
-          .foregroundStyle(accent)
-        Text("h").font(.system(size: 14)).foregroundStyle(.secondary)
-        Text("\(minutes % 60)")
-          .font(.system(size: 44, weight: .semibold).width(.condensed))
-          .foregroundStyle(accent).padding(.leading, 4)
-        Text("m").font(.system(size: 14)).foregroundStyle(.secondary)
-      }
-      .monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
-    }
-    .padding(20)
-    .frame(minWidth: 210, maxWidth: .infinity, minHeight: 176, alignment: .leading)
-    .background(
-      Color(light: 0xFFFFFF, dark: 0x1B1B23),
-      in: RoundedRectangle(cornerRadius: 20)
-    )
-    .accessibilityElement(children: .ignore)
-    .accessibilityLabel(title)
-    .accessibilityValue(FocusHistory.display(seconds))
+  @ViewBuilder private var taskCards: some View {
+    taskCard("Total Completed Tasks", count: state.completedTaskCount())
+    taskCard("Tasks Completed This Week", count: state.completedTaskCount(in: week))
+    taskCard("Tasks Completed Today", count: state.completedTaskCount(in: today))
+  }
+
+  private func taskCard(_ title: String, count: Int) -> some View {
+    SummaryMetric(title: title, value: "\(count)")
+  }
+
+  private func timeCard(_ title: String, seconds: TimeInterval) -> some View {
+    SummaryMetric(title: title, value: FocusHistory.display(seconds))
   }
 }
