@@ -2,7 +2,6 @@ import SwiftUI
 
 struct HomeView: View {
   @Bindable var state: InterfaceState
-  @Environment(\.colorScheme) private var colorScheme
   @State private var selectedTaskID: UUID?
   @State private var deletion: FocusTask?
 
@@ -85,7 +84,7 @@ struct HomeView: View {
           ForEach(state.myDayTasks) { task in
             TaskRow(
               state: state, task: task,
-              backgroundColor: colorScheme == .dark ? .panel : .workspace,
+              backgroundColor: .workspace,
               select: { selectedTaskID = task.id },
               requestDelete: { deletion = $0 }
             )
