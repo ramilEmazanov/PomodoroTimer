@@ -7,14 +7,26 @@ struct TimersView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 28) {
       PageHeading(title: "Timers")
-      Surface {
-        Group {
-          if state.phase == .setup { setup } else { active }
+      ViewThatFits(in: .horizontal) {
+        HStack(alignment: .top, spacing: 28) {
+          timerPanel.frame(minWidth: 420, maxWidth: 560)
+          recents.frame(minWidth: 220, maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, minHeight: 360)
+        VStack(alignment: .leading, spacing: 28) {
+          timerPanel.frame(maxWidth: 560)
+          recents.frame(maxWidth: 560, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
       }
-      .frame(maxWidth: 560).frame(maxWidth: .infinity)
-      recents.frame(maxWidth: 560, alignment: .leading).frame(maxWidth: .infinity)
+    }
+  }
+
+  private var timerPanel: some View {
+    Surface {
+      Group {
+        if state.phase == .setup { setup } else { active }
+      }
+      .frame(maxWidth: .infinity, minHeight: 360)
     }
   }
 
