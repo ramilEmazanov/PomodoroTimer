@@ -157,7 +157,7 @@ struct TimersView: View {
         ForEach(state.recents, id: \.self) { seconds in
           HStack {
             VStack(alignment: .leading, spacing: 5) {
-              Text(InterfaceState.time(seconds)).font(.system(size: 30, weight: .light))
+              Text(InterfaceState.time(seconds)).font(.system(size: 36, weight: .light))
                 .monospacedDigit()
               Text(InterfaceState.durationLabel(seconds)).font(.system(size: 12)).foregroundStyle(
                 .secondary)
