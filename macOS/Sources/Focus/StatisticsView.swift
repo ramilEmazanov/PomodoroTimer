@@ -12,6 +12,24 @@ struct StatisticsView: View {
     var id: Date { date }
   }
 
+  private struct ProjectFocus: Identifiable {
+    let project: FocusProject
+    let seconds: TimeInterval
+    var id: UUID { project.id }
+  }
+
+  private var projectFocus: [ProjectFocus] {
+    state.projects.map { project in
+      ProjectFocus(project: project, seconds: state.focusedSeconds(projectID: project.id))
+    }
+    .sorted { left, right in
+      if left.seconds != right.seconds { return left.seconds > right.seconds }
+      let comparison = left.project.title.localizedStandardCompare(right.project.title)
+      if comparison != .orderedSame { return comparison == .orderedAscending }
+      return left.id.uuidString < right.id.uuidString
+    }
+  }
+
   private var buckets: [Day] {
     let calendar = Calendar.current
     let today = calendar.startOfDay(for: state.now)
@@ -74,6 +92,7 @@ struct StatisticsView: View {
           .font(.system(size: 12)).foregroundStyle(.secondary)
         }
       }
+      projectsFocus
       Surface {
         VStack(alignment: .leading, spacing: 16) {
           Text("Session history").font(.system(size: 20, weight: .semibold))
@@ -89,6 +108,40 @@ struct StatisticsView: View {
           }
         }
       }
+    }
+  }
+
+  private var projectsFocus: some View {
+    Surface {
+      VStack(alignment: .leading, spacing: 16) {
+        HStack {
+          Text("Projects Focus").font(.system(size: 20, weight: .semibold))
+          Spacer()
+          Text("All time").font(.system(size: 12)).foregroundStyle(.secondary)
+        }
+        if state.projects.isEmpty {
+          Text("Create a project and focus on its tasks to see time spent here.")
+            .font(.system(size: 14)).foregroundStyle(.secondary)
+        } else {
+          VStack(spacing: 0) {
+            ForEach(Array(projectFocus.enumerated()), id: \.element.id) { index, total in
+              if index > 0 { Divider() }
+              HStack(spacing: 12) {
+                Image(systemName: "folder").foregroundStyle(.blue)
+                  .frame(width: 24)
+                Text(total.project.title).font(.system(size: 15, weight: .medium))
+                  .lineLimit(2).help(total.project.title)
+                Spacer(minLength: 16)
+                Text(FocusHistory.display(total.seconds))
+                  .font(.system(size: 20, weight: .medium)).monospacedDigit().fixedSize()
+              }
+              .padding(.vertical, 12)
+              .accessibilityElement(children: .combine)
+            }
+          }
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
   }
 }
