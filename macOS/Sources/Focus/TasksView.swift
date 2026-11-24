@@ -25,6 +25,33 @@ struct TasksView: View {
     sort.sorted(scopedTasks.filter(\.isCompleted))
   }
 
+  private enum ListEntry: Identifiable {
+    case task(FocusTask)
+    case completedHeader
+
+    enum ID: Hashable {
+      // Recreate the row when it moves between active and completed tasks.
+      case task(UUID, completed: Bool)
+      case completedHeader
+    }
+
+    var id: ID {
+      switch self {
+      case .task(let task): .task(task.id, completed: task.isCompleted)
+      case .completedHeader: .completedHeader
+      }
+    }
+  }
+
+  private var listEntries: [ListEntry] {
+    var entries = activeTasks.map(ListEntry.task)
+    if !completedTasks.isEmpty {
+      entries.append(.completedHeader)
+      if showCompletedTasks { entries += completedTasks.map(ListEntry.task) }
+    }
+    return entries
+  }
+
   private var selectedTask: FocusTask? { state.tasks.first { $0.id == selection } }
 
   var body: some View {
@@ -156,43 +183,36 @@ struct TasksView: View {
             .foregroundStyle(.secondary).padding(.vertical, 48).padding(.horizontal, 16)
             .frame(maxWidth: .infinity)
           }
-          ForEach(activeTasks) { task in
-            taskRow(task) {
-              selection = task.id
-              if compact { showCompactDetail = true }
-            }
-          }
-          if !completedTasks.isEmpty {
-            Button {
-              showCompletedTasks.toggle()
-            } label: {
-              HStack(spacing: 6) {
-                Image(systemName: showCompletedTasks ? "chevron.down" : "chevron.right")
-                  .font(.system(size: 10, weight: .semibold))
-                  .frame(width: 12)
-                Text("Completed Tasks")
+          ForEach(listEntries) { entry in
+            switch entry {
+            case .task(let task):
+              taskRow(task) {
+                selection = task.id
+                if compact { showCompactDetail = true }
               }
-              .font(.system(size: 12, weight: .medium))
-              .padding(.horizontal, 8).padding(.vertical, 6)
-              .background(Color.panel, in: RoundedRectangle(cornerRadius: 6))
-              .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain).foregroundStyle(Color.blue)
-            .accessibilityLabel("Completed Tasks")
-            .accessibilityValue(
-              showCompletedTasks ? "Expanded" : "Collapsed"
-            )
-            .accessibilityHint("Show or hide completed tasks")
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 12).padding(.bottom, 4)
-
-            if showCompletedTasks {
-              ForEach(completedTasks) { task in
-                taskRow(task) {
-                  selection = task.id
-                  if compact { showCompactDetail = true }
+            case .completedHeader:
+              Button {
+                showCompletedTasks.toggle()
+              } label: {
+                HStack(spacing: 6) {
+                  Image(systemName: showCompletedTasks ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .frame(width: 12)
+                  Text("Completed Tasks")
                 }
+                .font(.system(size: 12, weight: .medium))
+                .padding(.horizontal, 8).padding(.vertical, 6)
+                .background(Color.panel, in: RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
               }
+              .buttonStyle(.plain).foregroundStyle(Color.blue)
+              .accessibilityLabel("Completed Tasks")
+              .accessibilityValue(
+                showCompletedTasks ? "Expanded" : "Collapsed"
+              )
+              .accessibilityHint("Show or hide completed tasks")
+              .frame(maxWidth: .infinity, alignment: .leading)
+              .padding(.top, 12).padding(.bottom, 4)
             }
           }
         }
