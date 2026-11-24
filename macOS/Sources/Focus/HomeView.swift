@@ -131,15 +131,24 @@ struct SummaryMetric: View {
   let value: String
   var note: String? = nil
   var accent = false
+  var markerColor: Color? = nil
+  var compact = false
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+    VStack(alignment: .leading, spacing: compact ? 8 : 12) {
+      HStack(alignment: .top, spacing: 8) {
+        if let markerColor {
+          Capsule().fill(markerColor).frame(width: 4, height: 12)
+            .padding(.top, 2)
+            .accessibilityHidden(true)
+        }
+        Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+      }
       Text(value).font(.system(size: 25, weight: .semibold)).tracking(-0.5).monospacedDigit()
       if let note { Text(note).font(.system(size: 11)).foregroundStyle(.secondary) }
     }
-    .frame(minWidth: 155, maxWidth: .infinity, minHeight: 100, alignment: .leading)
-    .padding(20)
+    .frame(minWidth: 155, maxWidth: .infinity, minHeight: compact ? 68 : 100, alignment: .leading)
+    .padding(compact ? 16 : 20)
     .background(
       accent ? Color(light: 0xEDF6FF, dark: 0x233243) : Color.panel,
       in: RoundedRectangle(cornerRadius: 22))

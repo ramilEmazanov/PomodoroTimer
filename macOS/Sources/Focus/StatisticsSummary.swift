@@ -39,10 +39,11 @@ struct StatisticsSummary: View {
   }
 
   private func taskCard(_ title: String, count: Int) -> some View {
-    SummaryMetric(title: title, value: "\(count)")
+    SummaryMetric(title: title, value: "\(count)", markerColor: .primary, compact: true)
   }
 
   private func timeCard(_ title: String, seconds: TimeInterval) -> some View {
-    SummaryMetric(title: title, value: FocusHistory.display(seconds))
+    SummaryMetric(
+      title: title, value: FocusHistory.display(seconds), markerColor: .blue, compact: true)
   }
 }
