@@ -129,7 +129,7 @@ struct StatisticsView: View {
               HStack(spacing: 12) {
                 Image(systemName: "folder").foregroundStyle(.blue)
                   .frame(width: 24)
-                Text(total.project.title).font(.system(size: 15, weight: .medium))
+                Text(total.project.title).font(.system(size: 20, weight: .medium))
                   .lineLimit(2).help(total.project.title)
                 Spacer(minLength: 16)
                 Text(FocusHistory.display(total.seconds))
