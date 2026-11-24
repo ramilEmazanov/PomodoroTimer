@@ -235,7 +235,15 @@ final class InterfaceState {
     else { return }
     updated[index].title = title
     guard updated[index] != tasks[index] else { return }
-    updated[index].updatedAt = clock()
+    let instant = clock()
+    if updated[index].isCompleted {
+      updated[index].completedAt =
+        tasks[index].isCompleted
+        ? tasks[index].completedAt ?? tasks[index].updatedAt : instant
+    } else {
+      updated[index].completedAt = nil
+    }
+    updated[index].updatedAt = instant
     saveTasks(updated)
   }
 
