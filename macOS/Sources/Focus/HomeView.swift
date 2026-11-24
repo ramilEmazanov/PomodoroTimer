@@ -88,6 +88,11 @@ struct HomeView: View {
               select: { selectedTaskID = task.id },
               requestDelete: { deletion = $0 }
             )
+            .overlay {
+              RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.5)
+                .allowsHitTesting(false)
+            }
             .id("\(task.id)-\(task.isCompleted)")
           }
         }
