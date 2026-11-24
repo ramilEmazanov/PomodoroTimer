@@ -18,7 +18,7 @@ struct HomeView: View {
       } else {
         FocusSummary(state: state)
         Surface {
-          VStack(alignment: .leading, spacing: 8) {
+          VStack(alignment: .leading, spacing: 0) {
             HStack {
               Text("Recent sessions").font(.system(size: 20, weight: .semibold))
               Spacer()
