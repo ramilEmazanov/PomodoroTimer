@@ -209,6 +209,15 @@ final class InterfaceState {
 
   var tasks: [FocusTask] { pendingTasks ?? saved.tasks }
   var timerTasks: [FocusTask] { tasks.filter { !$0.isCompleted } }
+  var myDayTasks: [FocusTask] { TaskSort.dueDate.sorted(tasks.filter(\.isInMyDay)) }
+
+  func setMyDay(_ taskID: UUID, included: Bool) {
+    guard let task = tasks.first(where: { $0.id == taskID }), task.isInMyDay != included else {
+      return
+    }
+    let addedAt = included ? clock() : nil
+    editTask(taskID) { $0.myDayAddedAt = addedAt }
+  }
 
   @discardableResult
   func addTask(title: String, projectID: UUID? = nil) -> UUID? {

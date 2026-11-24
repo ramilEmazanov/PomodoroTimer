@@ -95,6 +95,31 @@ struct TaskDetailView: View {
             }
           }
           Divider()
+          HStack(spacing: 12) {
+            if task.isInMyDay {
+              Label("Added to My Day", systemImage: "sun.max")
+                .foregroundStyle(Color.blue)
+              Spacer(minLength: 8)
+              Button {
+                state.setMyDay(task.id, included: false)
+              } label: {
+                Image(systemName: "xmark").frame(width: 28, height: 28)
+                  .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain).foregroundStyle(.secondary)
+              .help("Remove from My Day").accessibilityLabel("Remove from My Day")
+            } else {
+              Button {
+                state.setMyDay(task.id, included: true)
+              } label: {
+                Label("Add to My Day", systemImage: "sun.max")
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                  .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain).foregroundStyle(.secondary)
+            }
+          }
+          Divider()
           VStack(alignment: .leading, spacing: 14) {
             if let date = task.dueDate {
               HStack {
@@ -178,6 +203,39 @@ struct TaskDetailView: View {
     if state.addSubtask(to: task.id, title: newStep) {
       newStep = ""
       stepFocused = true
+    }
+  }
+}
+
+struct TaskDetailSheet: View {
+  @Bindable var state: InterfaceState
+  let taskID: UUID?
+  let dismiss: () -> Void
+  @AppStorage(InterfaceZoom.storageKey) private var zoomPercentage = 100
+
+  var body: some View {
+    ZoomedInterface {
+      VStack(spacing: 0) {
+        HStack {
+          Text("Task details").font(.headline)
+          Spacer()
+          Button("Done", action: dismiss).keyboardShortcut(.cancelAction)
+        }
+        .padding(20)
+        Divider()
+        if let task = state.tasks.first(where: { $0.id == taskID }) {
+          TaskDetailView(state: state, task: task) { state.deleteTask(task.id) }
+            .id(task.id)
+        }
+      }
+      .background(Color.panel)
+    }
+    .frame(
+      width: 440 * InterfaceZoom.scale(for: zoomPercentage),
+      height: 640 * InterfaceZoom.scale(for: zoomPercentage)
+    )
+    .onChange(of: state.tasks.map(\.id)) { _, ids in
+      if let taskID, !ids.contains(taskID) { dismiss() }
     }
   }
 }

@@ -9,7 +9,6 @@ struct TasksView: View {
   @State private var showCompletedTasks = false
   @State private var showCompactDetail = false
   @State private var deletion: FocusTask?
-  @AppStorage(InterfaceZoom.storageKey) private var zoomPercentage = 100
   @FocusState private var composerFocused: Bool
 
   private var project: FocusProject? { state.projects.first { $0.id == projectID } }
@@ -74,23 +73,7 @@ struct TasksView: View {
           if compact { selection = nil }
         }
       ) {
-        ZoomedInterface {
-          VStack(spacing: 0) {
-            HStack {
-              Text("Task details").font(.headline)
-              Spacer()
-              Button("Done") { showCompactDetail = false }.keyboardShortcut(.cancelAction)
-            }
-            .padding(20)
-            Divider()
-            if let task = selectedTask { detail(task) }
-          }
-          .background(Color.panel)
-        }
-        .frame(
-          width: 440 * InterfaceZoom.scale(for: zoomPercentage),
-          height: 640 * InterfaceZoom.scale(for: zoomPercentage)
-        )
+        TaskDetailSheet(state: state, taskID: selection) { showCompactDetail = false }
       }
     }
     .onChange(of: state.tasks.map(\.id)) { _, ids in
@@ -251,86 +234,13 @@ struct TasksView: View {
   }
 
   private func taskRow(_ task: FocusTask, select: @escaping () -> Void) -> some View {
-    HStack(alignment: .center, spacing: 12) {
-      CompletionButton(completed: task.isCompleted, label: task.title, symbolSize: 20) {
-        state.editTask(task.id) { $0.isCompleted.toggle() }
-      }
-      Button(action: select) {
-        VStack(alignment: .leading, spacing: 3) {
-          HStack(spacing: 8) {
-            Text(task.title).font(.system(size: 15, weight: .medium))
-              .strikethrough(task.isCompleted)
-              .foregroundStyle(task.isCompleted ? .secondary : .primary)
-              .lineLimit(1).truncationMode(.tail)
-              .layoutPriority(1)
-              .help(task.title)
-            if projectID == nil,
-              let project = state.projects.first(where: { $0.id == task.projectID })
-            {
-              Label(project.title, systemImage: "folder").font(.system(size: 13))
-                .foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
-                .frame(maxWidth: 140, alignment: .leading)
-                .help(project.title)
-            }
-          }
-          if !task.subtasks.isEmpty || task.dueDate != nil {
-            HStack(spacing: 8) {
-              if !task.subtasks.isEmpty {
-                Text("\(task.completedSteps) of \(task.subtasks.count)")
-              }
-              if let date = task.dueDate {
-                Label(
-                  date.formatted(
-                    Date.VerbatimFormatStyle(
-                      format:
-                        "\(weekday: .abbreviated), \(day: .defaultDigits) \(month: .abbreviated)",
-                      locale: Locale(identifier: "en_US"),
-                      timeZone: .current,
-                      calendar: .current
-                    )),
-                  systemImage: "calendar"
-                )
-                .foregroundStyle(task.isOverdue(at: state.now) ? Color.red : .secondary)
-              }
-            }
-            .font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
-          }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Open task: \(task.title)")
-      Button {
-        state.editTask(task.id) { $0.isImportant.toggle() }
-      } label: {
-        Image(systemName: task.isImportant ? "star.fill" : "star")
-          .font(.system(size: 14))
-          .frame(width: 24, height: 30)
-          .contentShape(Rectangle())
-          .foregroundStyle(task.isImportant ? Color.blue : .secondary)
-      }
-      .buttonStyle(.plain)
-      .help(task.isImportant ? "Remove importance" : "Mark important")
-      .accessibilityLabel("\(task.isImportant ? "Unmark" : "Mark") important: \(task.title)")
-    }
-    .padding(.horizontal, 14).frame(height: 52)
-    .background {
-      Button(action: select) {
-        RoundedRectangle(cornerRadius: 10)
-          .fill(selection == task.id ? Color.blue.opacity(0.16) : Color.panel)
-          .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityHidden(true)
-    }
-    .contextMenu {
-      Button(task.isCompleted ? "Mark incomplete" : "Mark complete") {
-        state.editTask(task.id) { $0.isCompleted.toggle() }
-      }
-      Button("Delete task…", role: .destructive) { deletion = task }
-    }
+    TaskRow(
+      state: state, task: task, isSelected: selection == task.id,
+      showProject: projectID == nil, select: select,
+      requestDelete: { deletion = $0 }
+    )
   }
+
 }
 
 struct CompletionButton: View {

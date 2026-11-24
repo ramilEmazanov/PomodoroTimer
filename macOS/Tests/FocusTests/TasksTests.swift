@@ -17,6 +17,70 @@ private final class TaskTestStore: FocusStorage {
 
 @MainActor
 struct TasksTests {
+  @Test func myDaySurvivesRestartAndCanBeRemovedWithoutDeletingTask() throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appending(path: "focus.sqlite")
+    let state = InterfaceState(store: try SQLiteFocusStore(url: url))
+    let project = try #require(state.addProject(title: "Project"))
+    let chosen = try #require(state.addTask(title: "Chosen", projectID: project))
+    let other = try #require(state.addTask(title: "Other"))
+    #expect(state.myDayTasks.isEmpty)
+    state.setMyDay(chosen, included: true)
+    let addedAt = try #require(state.tasks.first { $0.id == chosen }?.myDayAddedAt)
+    state.setMyDay(chosen, included: true)
+    #expect(state.tasks.first { $0.id == chosen }?.myDayAddedAt == addedAt)
+    state.editTask(chosen) { $0.isCompleted = true }
+
+    let restored = InterfaceState(store: try SQLiteFocusStore(url: url))
+    #expect(restored.myDayTasks.map(\.id) == [chosen])
+    #expect(restored.myDayTasks.first?.isCompleted == true)
+    #expect(restored.myDayTasks.first?.projectID == project)
+    #expect(restored.tasks.first { $0.id == other }?.isInMyDay == false)
+    restored.setMyDay(chosen, included: false)
+    #expect(restored.myDayTasks.isEmpty)
+    #expect(restored.tasks.count == 2)
+    let again = InterfaceState(store: try SQLiteFocusStore(url: url))
+    #expect(again.myDayTasks.isEmpty)
+    #expect(again.tasks.first { $0.id == chosen }?.isCompleted == true)
+    again.setMyDay(chosen, included: true)
+    again.deleteTask(chosen)
+    #expect(again.myDayTasks.isEmpty)
+  }
+
+  @Test func myDayChangesRemainVisibleAfterStorageFailureAndRetry() throws {
+    let store = TaskTestStore()
+    let state = InterfaceState(store: store)
+    let task = try #require(state.addTask(title: "My task"))
+    store.fail = true
+    state.setMyDay(task, included: true)
+    #expect(state.myDayTasks.map(\.id) == [task])
+    #expect(store.state.tasks.first?.isInMyDay == false)
+    #expect(state.pendingTasks != nil)
+    store.fail = false
+    state.retryStorage()
+    #expect(state.pendingTasks == nil)
+    #expect(InterfaceState(store: store).myDayTasks.map(\.id) == [task])
+    store.fail = true
+    state.setMyDay(task, included: false)
+    #expect(state.myDayTasks.isEmpty)
+    store.fail = false
+    state.retryStorage()
+    #expect(InterfaceState(store: store).myDayTasks.isEmpty)
+  }
+
+  @Test func tasksWithoutMyDayFieldDecodeAsNotSelected() throws {
+    let date = Date(timeIntervalSince1970: 1_800_000_000)
+    let task = FocusTask(id: UUID(), title: "Existing task", createdAt: date, updatedAt: date)
+    var object = try #require(
+      JSONSerialization.jsonObject(with: JSONEncoder().encode(task)) as? [String: Any])
+    object.removeValue(forKey: "myDayAddedAt")
+    let decoded = try JSONDecoder().decode(
+      FocusTask.self, from: JSONSerialization.data(withJSONObject: object))
+    #expect(!decoded.isInMyDay)
+    #expect(decoded == task)
+  }
+
   @Test func completionOrderSurvivesEditsRestartAndRecompletion() throws {
     let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }

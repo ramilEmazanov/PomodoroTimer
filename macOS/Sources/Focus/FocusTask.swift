@@ -18,7 +18,9 @@ struct FocusTask: Codable, Identifiable, Equatable {
   var note = ""
   var subtasks: [FocusSubtask] = []
   var projectID: UUID?
+  var myDayAddedAt: Date?
 
+  var isInMyDay: Bool { myDayAddedAt != nil }
   var completedSteps: Int { subtasks.filter(\.isCompleted).count }
 
   func isOverdue(at date: Date, calendar: Calendar = .current) -> Bool {
