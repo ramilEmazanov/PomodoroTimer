@@ -135,7 +135,7 @@ struct TaskDetailView: View {
               .foregroundStyle(.secondary)
             ZStack(alignment: .topLeading) {
               if task.note.isEmpty {
-                Text("Add a note…").foregroundStyle(.tertiary).padding(.top, 8).padding(.leading, 5)
+                Text("Add a note…").foregroundStyle(.tertiary).padding(.leading, 5)
                   .font(.system(size: 16))
                   .allowsHitTesting(false)
               }
