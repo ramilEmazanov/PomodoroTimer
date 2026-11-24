@@ -227,15 +227,21 @@ struct TasksView: View {
       }
       Button(action: select) {
         VStack(alignment: .leading, spacing: 3) {
-          Text(task.title).font(.system(size: 15, weight: .medium))
-            .strikethrough(task.isCompleted)
-            .foregroundStyle(task.isCompleted ? .secondary : .primary)
-            .lineLimit(2).multilineTextAlignment(.leading)
-          if projectID == nil,
-            let project = state.projects.first(where: { $0.id == task.projectID })
-          {
-            Label(project.title, systemImage: "folder").font(.system(size: 11))
-              .foregroundStyle(.secondary).lineLimit(1)
+          HStack(spacing: 8) {
+            Text(task.title).font(.system(size: 15, weight: .medium))
+              .strikethrough(task.isCompleted)
+              .foregroundStyle(task.isCompleted ? .secondary : .primary)
+              .lineLimit(1).truncationMode(.tail)
+              .layoutPriority(1)
+              .help(task.title)
+            if projectID == nil,
+              let project = state.projects.first(where: { $0.id == task.projectID })
+            {
+              Label(project.title, systemImage: "folder").font(.system(size: 11))
+                .foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
+                .frame(maxWidth: 140, alignment: .leading)
+                .help(project.title)
+            }
           }
           if !task.subtasks.isEmpty || task.dueDate != nil {
             HStack(spacing: 8) {
@@ -260,7 +266,7 @@ struct TasksView: View {
             .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
           }
         }
-        .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
       }
       .buttonStyle(.plain)
@@ -278,7 +284,7 @@ struct TasksView: View {
       .help(task.isImportant ? "Remove importance" : "Mark important")
       .accessibilityLabel("\(task.isImportant ? "Unmark" : "Mark") important: \(task.title)")
     }
-    .padding(.horizontal, 14).padding(.vertical, 6)
+    .padding(.horizontal, 14).frame(height: 64)
     .background(
       selection == task.id ? Color.blue.opacity(0.16) : Color.panel,
       in: RoundedRectangle(cornerRadius: 10)
