@@ -306,11 +306,18 @@ struct CompletionButton: View {
   let action: () -> Void
   var body: some View {
     Button(action: action) {
-      Image(systemName: completed ? "checkmark.circle.fill" : "circle")
-        .font(.system(size: small ? 19 : symbolSize, weight: .regular))
-        .foregroundStyle(completed ? Color.blue : .secondary)
-        .frame(width: small ? 24 : 28, height: 30)
-        .contentShape(Rectangle())
+      Group {
+        if completed {
+          Image(systemName: "checkmark.circle.fill")
+            .foregroundStyle(Color.blue)
+        } else {
+          Image(systemName: "circle")
+            .foregroundStyle(.secondary)
+        }
+      }
+      .font(.system(size: small ? 19 : symbolSize, weight: .regular))
+      .frame(width: small ? 24 : 28, height: 30)
+      .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .accessibilityLabel("\(completed ? "Mark incomplete" : "Complete"): \(label)")
