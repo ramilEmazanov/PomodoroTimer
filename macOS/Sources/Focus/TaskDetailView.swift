@@ -99,6 +99,17 @@ struct TaskDetailView: View {
             if let date = task.dueDate {
               HStack {
                 Label("Due date", systemImage: "calendar").font(.system(size: 15, weight: .medium))
+                DatePicker(
+                  "Due date",
+                  selection: Binding(
+                    get: { date },
+                    set: { value in
+                      state.editTask(task.id) {
+                        $0.dueDate = Calendar.current.startOfDay(for: value)
+                      }
+                    }), displayedComponents: .date
+                )
+                .labelsHidden().datePickerStyle(.field).fixedSize()
                 Spacer()
                 Button {
                   state.editTask(task.id) { $0.dueDate = nil }
@@ -107,15 +118,6 @@ struct TaskDetailView: View {
                 }
                 .buttonStyle(.plain).help("Remove due date").accessibilityLabel("Remove due date")
               }
-              DatePicker(
-                "Due date",
-                selection: Binding(
-                  get: { date },
-                  set: { value in
-                    state.editTask(task.id) { $0.dueDate = Calendar.current.startOfDay(for: value) }
-                  }), displayedComponents: .date
-              )
-              .labelsHidden().datePickerStyle(.field)
               if task.isOverdue(at: state.now) {
                 Label("Overdue", systemImage: "exclamationmark.circle").font(.system(size: 14))
                   .foregroundStyle(.red)
