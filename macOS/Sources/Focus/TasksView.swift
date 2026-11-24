@@ -6,32 +6,22 @@ struct TasksView: View {
   @State private var selection: UUID?
   @State private var newTitle = ""
   @State private var sort: TaskSort = .dueDate
-  @State private var filter: TaskFilter = .all
+  @State private var showCompletedTasks = false
   @State private var showCompactDetail = false
   @State private var deletion: FocusTask?
   @FocusState private var composerFocused: Bool
-
-  private enum TaskFilter: String, CaseIterable, Identifiable {
-    case all = "All tasks"
-    case active = "Active"
-    case completed = "Completed"
-    var id: Self { self }
-  }
 
   private var project: FocusProject? { state.projects.first { $0.id == projectID } }
   private var scopedTasks: [FocusTask] {
     state.tasks.filter { projectID == nil || $0.projectID == projectID }
   }
 
-  private var visibleTasks: [FocusTask] {
-    sort.sorted(
-      scopedTasks.filter { task in
-        switch filter {
-        case .all: true
-        case .active: !task.isCompleted
-        case .completed: task.isCompleted
-        }
-      })
+  private var activeTasks: [FocusTask] {
+    sort.sorted(scopedTasks.filter { !$0.isCompleted })
+  }
+
+  private var completedTasks: [FocusTask] {
+    sort.sorted(scopedTasks.filter(\.isCompleted))
   }
 
   private var selectedTask: FocusTask? { state.tasks.first { $0.id == selection } }
@@ -140,10 +130,6 @@ struct TasksView: View {
           }
           .menuStyle(.borderlessButton).fixedSize()
           Spacer(minLength: 8)
-          Picker("Show tasks", selection: $filter) {
-            ForEach(TaskFilter.allCases) { Text($0.rawValue).tag($0) }
-          }
-          .labelsHidden().pickerStyle(.menu).fixedSize()
         }
         .font(.system(size: 12))
         if state.pendingTasks != nil {
@@ -157,26 +143,55 @@ struct TasksView: View {
       .padding(24)
       ScrollView {
         LazyVStack(spacing: 5) {
-          if visibleTasks.isEmpty {
+          if scopedTasks.isEmpty {
             VStack(spacing: 12) {
               Image(systemName: "checklist")
                 .font(.system(size: 28, weight: .light))
-              Text(scopedTasks.isEmpty ? "Make room for what matters" : "No matching tasks").font(
-                .headline)
-              Text(
-                scopedTasks.isEmpty
-                  ? "Add your first task below, then break it into smaller steps."
-                  : "Try another task filter."
-              )
-              .font(.callout).multilineTextAlignment(.center)
+              Text("Make room for what matters").font(.headline)
+              Text("Add your first task below, then break it into smaller steps.")
+                .font(.callout).multilineTextAlignment(.center)
             }
             .foregroundStyle(.secondary).padding(.vertical, 48).padding(.horizontal, 16)
             .frame(maxWidth: .infinity)
           }
-          ForEach(visibleTasks) { task in
+          ForEach(activeTasks) { task in
             taskRow(task) {
               selection = task.id
               if compact { showCompactDetail = true }
+            }
+          }
+          if !completedTasks.isEmpty {
+            Button {
+              showCompletedTasks.toggle()
+            } label: {
+              HStack(spacing: 6) {
+                Image(systemName: showCompletedTasks ? "chevron.down" : "chevron.right")
+                  .font(.system(size: 10, weight: .semibold))
+                  .frame(width: 12)
+                Text("Completed Tasks")
+                Text("\(completedTasks.count)").foregroundStyle(.secondary)
+              }
+              .font(.system(size: 12, weight: .medium))
+              .padding(.horizontal, 8).padding(.vertical, 6)
+              .background(Color.panel, in: RoundedRectangle(cornerRadius: 6))
+              .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).foregroundStyle(Color.blue)
+            .accessibilityLabel("Completed Tasks")
+            .accessibilityValue(
+              "\(completedTasks.count) tasks, \(showCompletedTasks ? "expanded" : "collapsed")"
+            )
+            .accessibilityHint("Show or hide completed tasks")
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 12).padding(.bottom, 4)
+
+            if showCompletedTasks {
+              ForEach(completedTasks) { task in
+                taskRow(task) {
+                  selection = task.id
+                  if compact { showCompactDetail = true }
+                }
+              }
             }
           }
         }
@@ -201,7 +216,6 @@ struct TasksView: View {
     guard let id = state.addTask(title: newTitle, projectID: projectID) else { return }
     selection = id
     newTitle = ""
-    filter = .all
     if compact { showCompactDetail = true }
   }
 
