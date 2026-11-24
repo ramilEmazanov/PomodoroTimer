@@ -225,15 +225,6 @@ struct TasksView: View {
       CompletionButton(completed: task.isCompleted, label: task.title) {
         state.editTask(task.id) { $0.isCompleted.toggle() }
       }
-      Button {
-        state.prepareTimer(for: task.id)
-      } label: {
-        Image(systemName: state.saved.active?.assignment?.taskID == task.id ? "timer" : "play.fill")
-          .font(.system(size: 12)).foregroundStyle(.blue)
-          .frame(width: 28, height: 30).contentShape(Rectangle())
-      }
-      .buttonStyle(.plain).disabled(state.saved.active != nil)
-      .help("Set timer for this task").accessibilityLabel("Set timer for \(task.title)")
       Button(action: select) {
         VStack(alignment: .leading, spacing: 3) {
           Text(task.title).font(.system(size: 15, weight: .medium))
