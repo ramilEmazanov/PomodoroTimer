@@ -84,23 +84,16 @@ struct HomeView: View {
           ForEach(state.myDayTasks) { task in
             TaskRow(
               state: state, task: task,
-              backgroundColor: .workspace,
+              backgroundColor: .panel,
               select: { selectedTaskID = task.id },
               requestDelete: { deletion = $0 }
             )
-            .overlay {
-              RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(Color.white.opacity(0.25), lineWidth: 0.5)
-                .allowsHitTesting(false)
-            }
             .id("\(task.id)-\(task.isCompleted)")
           }
         }
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)
-    .padding(24)
-    .background(Color.panel, in: RoundedRectangle(cornerRadius: 22))
   }
 }
 
