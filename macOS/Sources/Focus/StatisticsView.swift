@@ -53,7 +53,7 @@ struct StatisticsView: View {
     VStack(alignment: .leading, spacing: 24) {
       PageHeading(
         title: "Statistics", subtitle: "Your focus time, session history and daily progress.")
-      FocusSummary(state: state)
+      StatisticsSummary(state: state)
       Surface {
         VStack(alignment: .leading, spacing: 22) {
           HStack {
