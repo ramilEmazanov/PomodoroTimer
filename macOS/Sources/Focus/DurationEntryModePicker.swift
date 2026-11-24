@@ -15,7 +15,7 @@ struct DurationEntryModePicker: View {
           Text(mode.rawValue)
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(dark ? Color.white : Color.primary)
-            .frame(maxWidth: .infinity).frame(height: 36)
+            .frame(maxWidth: .infinity).frame(height: 28)
             .background {
               if selection == mode {
                 Capsule().fill(dark ? Color.white.opacity(0.11) : Color.white)
