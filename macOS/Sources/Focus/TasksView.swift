@@ -239,25 +239,30 @@ struct TasksView: View {
             .strikethrough(task.isCompleted)
             .foregroundStyle(task.isCompleted ? .secondary : .primary)
             .lineLimit(2).multilineTextAlignment(.leading)
-          Text(FocusHistory.display(state.focusedSeconds(taskID: task.id)) + " focused")
-            .font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit()
           if projectID == nil,
             let project = state.projects.first(where: { $0.id == task.projectID })
           {
             Label(project.title, systemImage: "folder").font(.system(size: 11))
               .foregroundStyle(.secondary).lineLimit(1)
           }
-          if !task.subtasks.isEmpty || task.dueDate != nil || !task.note.isEmpty {
+          if !task.subtasks.isEmpty || task.dueDate != nil {
             HStack(spacing: 8) {
               if !task.subtasks.isEmpty {
                 Text("\(task.completedSteps) of \(task.subtasks.count)")
               }
               if let date = task.dueDate {
-                Label(date.formatted(.dateTime.day().month(.abbreviated)), systemImage: "calendar")
-                  .foregroundStyle(task.isOverdue(at: state.now) ? Color.red : .secondary)
-              }
-              if !task.note.isEmpty {
-                Image(systemName: "note.text").accessibilityLabel("Has a note")
+                Label(
+                  date.formatted(
+                    Date.VerbatimFormatStyle(
+                      format:
+                        "\(weekday: .abbreviated), \(day: .defaultDigits) \(month: .abbreviated)",
+                      locale: Locale(identifier: "en_US"),
+                      timeZone: .current,
+                      calendar: .current
+                    )),
+                  systemImage: "calendar"
+                )
+                .foregroundStyle(task.isOverdue(at: state.now) ? Color.red : .secondary)
               }
             }
             .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
