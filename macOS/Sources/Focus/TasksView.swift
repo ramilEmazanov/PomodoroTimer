@@ -115,10 +115,6 @@ struct TasksView: View {
           .buttonStyle(.borderless).keyboardShortcut("n", modifiers: .command)
           .help("New task (⌘N)").accessibilityLabel("New task")
         }
-        Text(
-          "\(scopedTasks.filter { !$0.isCompleted }.count) active · \(scopedTasks.filter(\.isCompleted).count) completed"
-        )
-        .font(.system(size: 12)).foregroundStyle(.secondary)
         if let project {
           Label(
             FocusHistory.display(state.focusedSeconds(projectID: project.id)) + " focused",
@@ -175,7 +171,6 @@ struct TasksView: View {
                   .font(.system(size: 10, weight: .semibold))
                   .frame(width: 12)
                 Text("Completed Tasks")
-                Text("\(completedTasks.count)").foregroundStyle(.secondary)
               }
               .font(.system(size: 12, weight: .medium))
               .padding(.horizontal, 8).padding(.vertical, 6)
@@ -185,7 +180,7 @@ struct TasksView: View {
             .buttonStyle(.plain).foregroundStyle(Color.blue)
             .accessibilityLabel("Completed Tasks")
             .accessibilityValue(
-              "\(completedTasks.count) tasks, \(showCompletedTasks ? "expanded" : "collapsed")"
+              showCompletedTasks ? "Expanded" : "Collapsed"
             )
             .accessibilityHint("Show or hide completed tasks")
             .frame(maxWidth: .infinity, alignment: .leading)
