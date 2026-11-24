@@ -100,7 +100,7 @@ final class InterfaceState {
     guard (1...86399).contains(value) else { return }
     let instant = clock()
     var candidate = saved
-    let task = tasks.first { $0.id == timerTaskID }
+    let task = timerTasks.first { $0.id == timerTaskID }
     let assignment = task.map { task in
       FocusAssignment(
         taskID: task.id, taskTitle: task.title, projectID: task.projectID,
@@ -208,6 +208,7 @@ final class InterfaceState {
   }
 
   var tasks: [FocusTask] { pendingTasks ?? saved.tasks }
+  var timerTasks: [FocusTask] { tasks.filter { !$0.isCompleted } }
 
   @discardableResult
   func addTask(title: String, projectID: UUID? = nil) -> UUID? {
@@ -266,6 +267,9 @@ final class InterfaceState {
   private func saveTasks(_ tasks: [FocusTask]) {
     // Retain unsaved edits on screen if disk writes fail; Retry storage commits them later.
     pendingTasks = tasks
+    if let timerTaskID, !tasks.contains(where: { $0.id == timerTaskID && !$0.isCompleted }) {
+      self.timerTaskID = nil
+    }
     _ = commit(saved)
   }
 
@@ -304,7 +308,7 @@ final class InterfaceState {
   }
 
   func prepareTimer(for taskID: UUID) {
-    guard saved.active == nil, tasks.contains(where: { $0.id == taskID }) else { return }
+    guard saved.active == nil, timerTasks.contains(where: { $0.id == taskID }) else { return }
     timerTaskID = taskID
     if phase == .finished { phase = .setup }
     section = .timer

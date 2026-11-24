@@ -22,7 +22,7 @@ struct TimersView: View {
     VStack(spacing: 16) {
       Picker("Task", selection: $state.timerTaskID) {
         Text("No task").tag(nil as UUID?)
-        ForEach(state.tasks) { task in
+        ForEach(state.timerTasks) { task in
           let project = state.projects.first { $0.id == task.projectID }
           Text(project.map { "\($0.title) / \(task.title)" } ?? task.title)
             .tag(Optional(task.id))

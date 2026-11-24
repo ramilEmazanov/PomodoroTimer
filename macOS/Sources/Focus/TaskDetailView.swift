@@ -38,7 +38,7 @@ struct TaskDetailView: View {
             )
             .font(.system(size: 16, weight: .medium)).monospacedDigit()
             Button("Set timer for this task") { state.prepareTimer(for: task.id) }
-              .buttonStyle(.borderless).disabled(state.saved.active != nil)
+              .buttonStyle(.borderless).disabled(state.saved.active != nil || task.isCompleted)
             Picker(
               "Project",
               selection: Binding(
