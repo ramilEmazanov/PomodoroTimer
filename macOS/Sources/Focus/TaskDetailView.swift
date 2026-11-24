@@ -99,6 +99,7 @@ struct TaskDetailView: View {
             if let date = task.dueDate {
               HStack {
                 Label("Due date", systemImage: "calendar").font(.system(size: 15, weight: .medium))
+                  .foregroundStyle(.primary)
                 DatePicker(
                   "Due date",
                   selection: Binding(
@@ -134,7 +135,7 @@ struct TaskDetailView: View {
           Divider()
           VStack(alignment: .leading, spacing: 12) {
             Label("Note", systemImage: "note.text").font(.system(size: 15, weight: .medium))
-              .foregroundStyle(.secondary)
+              .foregroundStyle(.primary)
             ZStack(alignment: .topLeading) {
               if task.note.isEmpty {
                 Text("Add a note…").foregroundStyle(.tertiary).padding(.leading, 5)
