@@ -237,7 +237,7 @@ struct TasksView: View {
             if projectID == nil,
               let project = state.projects.first(where: { $0.id == task.projectID })
             {
-              Label(project.title, systemImage: "folder").font(.system(size: 11))
+              Label(project.title, systemImage: "folder").font(.system(size: 13))
                 .foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
                 .frame(maxWidth: 140, alignment: .leading)
                 .help(project.title)
@@ -263,7 +263,7 @@ struct TasksView: View {
                 .foregroundStyle(task.isOverdue(at: state.now) ? Color.red : .secondary)
               }
             }
-            .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
+            .font(.system(size: 13)).foregroundStyle(.secondary).lineLimit(1)
           }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
