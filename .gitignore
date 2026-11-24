@@ -32,3 +32,10 @@ skills-lock.json
 # Temporary files
 .tmp/
 tmp/
+
+# Native macOS build output
+macOS/.build/
+macOS/.swiftpm/
+macOS/build/
+*.xcuserstate
+xcuserdata/

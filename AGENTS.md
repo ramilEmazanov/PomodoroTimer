@@ -10,6 +10,15 @@ React + Vite + Tailwind CSS project exported from Figma Make.
 - Use `pnpm format` for formatting.
 - After completing changes and passing the required checks, create a Git commit with a clear message describing the changes. Commit only files relevant to the task. Do not push unless explicitly requested. Skip the commit if the user asks not to commit.
 
+## Native macOS application
+
+- `macOS/` — native SwiftUI application with a local SQLite backend; see `macOS/README.md`.
+- Build native changes with `cd macOS && swift build`; package with `bash macOS/scripts/build-app.sh` from the repository root.
+- Format Swift with `swift format format --in-place --recursive macOS/Sources macOS/Package.swift`.
+- Run `cd macOS && swift test` after native backend changes. Tests use isolated stores; never use the real user database for test fixtures.
+- Local sessions, active timer and preferences are persisted by `FocusStore.swift`. Session writes and clearing the active timer must stay in one transaction.
+- Format tests together with sources: `swift format format --in-place --recursive macOS/Sources macOS/Tests macOS/Package.swift`.
+
 ## Project Structure
 
 - `src/main.tsx` — React entrypoint.
@@ -20,8 +29,6 @@ React + Vite + Tailwind CSS project exported from Figma Make.
 - `src/utils/formatTime.ts` — timer display formatting.
 - `src/styles/index.css` — global styles and Tailwind entrypoint.
 - `public/` — static assets.
-- `task.md` — coursework requirements.
-- `submission/` — product scenario and mockup creation notes.
 - `config/vite.config.ts` — local Vite configuration; no Figma runtime required.
 
 Read task-relevant files first. Follow imports only as needed.
