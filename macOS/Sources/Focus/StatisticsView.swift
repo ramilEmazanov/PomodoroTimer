@@ -3,10 +3,10 @@ import SwiftUI
 
 struct StatisticsView: View {
   let state: InterfaceState
-  @State private var days = 7
+  @State private var period: FocusChartPeriod = .daily
   @State private var pageSize = 20
 
-  private struct Day: Identifiable {
+  private struct FocusBucket: Identifiable {
     let date: Date
     let seconds: TimeInterval
     var id: Date { date }
@@ -30,16 +30,22 @@ struct StatisticsView: View {
     }
   }
 
-  private var buckets: [Day] {
-    let calendar = Calendar.current
-    let today = calendar.startOfDay(for: state.now)
-    return (0..<days).reversed().compactMap { offset in
-      guard let date = calendar.date(byAdding: .day, value: -offset, to: today),
-        let interval = calendar.dateInterval(of: .day, for: date)
-      else { return nil }
-      return Day(date: date, seconds: state.history.focusedSeconds(in: interval))
+  private var buckets: [FocusBucket] {
+    period.intervals(endingAt: state.now).map { interval in
+      FocusBucket(date: interval.start, seconds: state.history.focusedSeconds(in: interval))
     }
   }
+
+  private var axisFormat: Date.FormatStyle {
+    switch period {
+    case .daily, .weekly: .dateTime.day().month(.abbreviated)
+    case .monthly: .dateTime.month(.abbreviated)
+    case .yearly: .dateTime.year()
+    }
+  }
+
+  private var chartUnit: String { period == .daily ? "Minutes" : "Hours" }
+  private var secondsPerUnit: Double { period == .daily ? 60 : 3600 }
 
   private var range: DateInterval {
     DateInterval(start: buckets.first?.date ?? state.now, end: state.now.addingTimeInterval(0.001))
@@ -56,33 +62,40 @@ struct StatisticsView: View {
       StatisticsSummary(state: state)
       Surface {
         VStack(alignment: .leading, spacing: 22) {
-          HStack {
-            Text("Daily focus").font(.system(size: 20, weight: .semibold))
-            Spacer()
-            Picker("Period", selection: $days) {
-              Text("7 days").tag(7)
-              Text("30 days").tag(30)
+          ViewThatFits(in: .horizontal) {
+            HStack {
+              Text("Focus Time Chart").font(.system(size: 20, weight: .semibold))
+              Spacer()
+              periodPicker.frame(width: 300)
             }
-            .pickerStyle(.segmented).frame(width: 180)
-            .onChange(of: days) { _, _ in pageSize = 20 }
+            VStack(alignment: .leading, spacing: 12) {
+              Text("Focus Time Chart").font(.system(size: 20, weight: .semibold))
+              periodPicker.frame(maxWidth: 360)
+            }
           }
+          Text(period.rangeLabel).font(.system(size: 12)).foregroundStyle(.secondary)
           HStack(spacing: 24) {
             Text(FocusHistory.display(state.history.focusedSeconds(in: range)))
               .font(.system(size: 28, weight: .semibold)).monospacedDigit()
             Text("\(state.history.completed(in: range)) completed sessions").foregroundStyle(
               .secondary)
           }
-          Chart(buckets) { day in
-            BarMark(x: .value("Day", day.date, unit: .day), y: .value("Minutes", day.seconds / 60))
-              .foregroundStyle(.blue).cornerRadius(4)
-              .accessibilityLabel(day.date.formatted(date: .abbreviated, time: .omitted))
-              .accessibilityValue(FocusHistory.display(day.seconds))
+          Chart(buckets) { bucket in
+            BarMark(
+              x: .value("Period", bucket.date, unit: period.component),
+              y: .value(chartUnit, bucket.seconds / secondsPerUnit)
+            )
+            .foregroundStyle(.blue).cornerRadius(4)
+            .accessibilityLabel(bucket.date.formatted(date: .abbreviated, time: .omitted))
+            .accessibilityValue(FocusHistory.display(bucket.seconds))
           }
-          .chartYScale(domain: 0...max(1, (buckets.map(\.seconds).max() ?? 0) / 60 * 1.1))
-          .chartYAxisLabel("Minutes")
+          .chartYScale(
+            domain: 0...max(1, (buckets.map(\.seconds).max() ?? 0) / secondsPerUnit * 1.1)
+          )
+          .chartYAxisLabel(chartUnit)
           .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: days == 7 ? 1 : 5)) { _ in
-              AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+            AxisMarks(values: buckets.map(\.date)) { _ in
+              AxisValueLabel(format: axisFormat)
             }
           }
           .frame(height: 230)
@@ -109,6 +122,14 @@ struct StatisticsView: View {
         }
       }
     }
+  }
+
+  private var periodPicker: some View {
+    Picker("Period", selection: $period) {
+      ForEach(FocusChartPeriod.allCases) { Text($0.rawValue).tag($0) }
+    }
+    .pickerStyle(.segmented)
+    .onChange(of: period) { _, _ in pageSize = 20 }
   }
 
   private var projectsFocus: some View {
