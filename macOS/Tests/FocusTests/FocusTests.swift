@@ -29,6 +29,43 @@ private final class MemoryStore: FocusStorage {
 
 @MainActor
 struct FocusTests {
+  @Test func idleRefreshKeepsClockStableUntilCalendarDayChanges() throws {
+    let clock = TestClock()
+    clock.now = try #require(Calendar.current.dateInterval(of: .day, for: clock.now)).start
+      .addingTimeInterval(3600)
+    let state = InterfaceState(store: MemoryStore(), clock: { clock.now })
+    let original = state.now
+    clock.advance(0.25)
+    state.refresh()
+    #expect(state.now == original)
+    clock.advance(3600)
+    state.refresh()
+    #expect(state.now == original)
+    clock.now = try #require(Calendar.current.dateInterval(of: .day, for: clock.now)).end
+    state.refresh()
+    #expect(state.now == clock.now)
+  }
+
+  @Test func runningRefreshUpdatesOnlyWhenDisplayedSecondsChange() {
+    let clock = TestClock()
+    let state = InterfaceState(store: MemoryStore(), clock: { clock.now })
+    state.start(10)
+    let start = state.now
+    clock.advance(0.25)
+    state.refresh()
+    #expect(state.now == start)
+    #expect(state.remaining == 10)
+    clock.advance(0.75)
+    state.refresh()
+    #expect(state.now == clock.now)
+    #expect(state.remaining == 9)
+    clock.advance(9)
+    state.refresh()
+    #expect(state.phase == .finished)
+    #expect(state.sessions.count == 1)
+    #expect(state.sessions.first?.focusedSeconds == 10)
+  }
+
   @Test func pauseResumeExcludesPausedTimeAndPreventsDuplicateStarts() throws {
     let clock = TestClock()
     let store = MemoryStore()

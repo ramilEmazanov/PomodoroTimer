@@ -153,9 +153,19 @@ final class InterfaceState {
   }
 
   func refresh(retry: Bool = false) {
-    now = clock()
+    let instant = clock()
+    let dayChanged = !Calendar.current.isDate(now, inSameDayAs: instant)
+    if let active = saved.active, active.runningSince != nil {
+      if dayChanged || ceil(active.remaining(at: now)) != ceil(active.remaining(at: instant)) {
+        now = instant
+      }
+    } else if dayChanged {
+      now = instant
+    }
     guard storageError == nil || retry else { return }
-    guard let active = saved.active, let deadline = active.deadline, now >= deadline else { return }
+    guard let active = saved.active, let deadline = active.deadline, instant >= deadline else {
+      return
+    }
     var candidate = saved
     candidate.active = nil
     if commit(candidate, adding: [active.record(outcome: .completed, at: deadline)]) {

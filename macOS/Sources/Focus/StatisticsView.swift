@@ -6,12 +6,6 @@ struct StatisticsView: View {
   @State private var period: FocusChartPeriod = .daily
   @State private var pageSize = 20
 
-  private struct FocusBucket: Identifiable {
-    let date: Date
-    let seconds: TimeInterval
-    var id: Date { date }
-  }
-
   private struct ProjectFocus: Identifiable {
     let project: FocusProject
     let seconds: TimeInterval
@@ -30,12 +24,6 @@ struct StatisticsView: View {
     }
   }
 
-  private var buckets: [FocusBucket] {
-    period.intervals(endingAt: state.now).map { interval in
-      FocusBucket(date: interval.start, seconds: state.history.focusedSeconds(in: interval))
-    }
-  }
-
   private var axisFormat: Date.FormatStyle {
     switch period {
     case .daily, .weekly: .dateTime.day().month(.abbreviated)
@@ -47,15 +35,8 @@ struct StatisticsView: View {
   private var chartUnit: String { period == .daily ? "Minutes" : "Hours" }
   private var secondsPerUnit: Double { period == .daily ? 60 : 3600 }
 
-  private var range: DateInterval {
-    DateInterval(start: buckets.first?.date ?? state.now, end: state.now.addingTimeInterval(0.001))
-  }
-
-  private var records: [FocusSession] {
-    state.sessions.filter { $0.endedAt >= range.start && $0.endedAt <= state.now }
-  }
-
   var body: some View {
+    let snapshot = FocusStatisticsSnapshot(history: state.history, period: period)
     VStack(alignment: .leading, spacing: 24) {
       PageHeading(
         title: "Statistics", subtitle: "Your focus time, session history and daily progress.")
@@ -75,12 +56,12 @@ struct StatisticsView: View {
           }
           Text(period.rangeLabel).font(.system(size: 12)).foregroundStyle(.secondary)
           HStack(spacing: 24) {
-            Text(FocusHistory.display(state.history.focusedSeconds(in: range)))
+            Text(FocusHistory.display(snapshot.totalSeconds))
               .font(.system(size: 28, weight: .semibold)).monospacedDigit()
-            Text("\(state.history.completed(in: range)) completed sessions").foregroundStyle(
+            Text("\(snapshot.completedSessions) completed sessions").foregroundStyle(
               .secondary)
           }
-          Chart(buckets) { bucket in
+          Chart(snapshot.buckets) { bucket in
             BarMark(
               x: .value("Period", bucket.date, unit: period.component),
               y: .value(chartUnit, bucket.seconds / secondsPerUnit)
@@ -90,11 +71,11 @@ struct StatisticsView: View {
             .accessibilityValue(FocusHistory.display(bucket.seconds))
           }
           .chartYScale(
-            domain: 0...max(1, (buckets.map(\.seconds).max() ?? 0) / secondsPerUnit * 1.1)
+            domain: 0...max(1, (snapshot.buckets.map(\.seconds).max() ?? 0) / secondsPerUnit * 1.1)
           )
           .chartYAxisLabel(chartUnit)
           .chartXAxis {
-            AxisMarks(values: buckets.map(\.date)) { _ in
+            AxisMarks(values: snapshot.buckets.map(\.date)) { _ in
               AxisValueLabel(format: axisFormat)
             }
           }
@@ -109,12 +90,12 @@ struct StatisticsView: View {
       Surface {
         VStack(alignment: .leading, spacing: 16) {
           Text("Session history").font(.system(size: 20, weight: .semibold))
-          if records.isEmpty {
+          if snapshot.records.isEmpty {
             Text("No sessions in this period. Start a timer to begin tracking your focus.")
               .foregroundStyle(.secondary)
           } else {
-            SessionHistoryList(sessions: Array(records.prefix(pageSize)))
-            if records.count > pageSize {
+            SessionHistoryList(sessions: Array(snapshot.records.prefix(pageSize)))
+            if snapshot.records.count > pageSize {
               Button("Show more sessions") { pageSize += 20 }.buttonStyle(
                 ActionStyle(prominent: false))
             }
