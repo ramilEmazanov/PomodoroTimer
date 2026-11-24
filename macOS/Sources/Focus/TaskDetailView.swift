@@ -6,6 +6,8 @@ struct TaskDetailView: View {
   let requestDelete: () -> Void
   @State private var newStep = ""
   @State private var confirmDeletion = false
+  @State private var showDueDatePicker = false
+  @State private var draftDueDate = Date.now
   @FocusState private var stepFocused: Bool
 
   var body: some View {
@@ -150,11 +152,33 @@ struct TaskDetailView: View {
               }
             } else {
               Button {
-                state.editTask(task.id) { $0.dueDate = Calendar.current.startOfDay(for: state.now) }
+                draftDueDate = Calendar.current.startOfDay(for: state.now)
+                showDueDatePicker = true
               } label: {
                 Label("Add due date", systemImage: "calendar.badge.plus")
               }
               .buttonStyle(.borderless)
+              .popover(isPresented: $showDueDatePicker, arrowEdge: .bottom) {
+                VStack(spacing: 16) {
+                  DatePicker("Due date", selection: $draftDueDate, displayedComponents: .date)
+                    .datePickerStyle(.graphical).labelsHidden()
+                    .accessibilityLabel("Choose due date")
+                  Divider()
+                  HStack {
+                    Button("Cancel") { showDueDatePicker = false }
+                      .keyboardShortcut(.cancelAction)
+                    Spacer()
+                    Button("Add") {
+                      showDueDatePicker = false
+                      state.editTask(task.id) {
+                        $0.dueDate = Calendar.current.startOfDay(for: draftDueDate)
+                      }
+                    }
+                    .keyboardShortcut(.defaultAction)
+                  }
+                }
+                .padding(16).frame(width: 300)
+              }
             }
           }
           Divider()
