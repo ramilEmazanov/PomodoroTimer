@@ -284,7 +284,7 @@ struct TasksView: View {
       .help(task.isImportant ? "Remove importance" : "Mark important")
       .accessibilityLabel("\(task.isImportant ? "Unmark" : "Mark") important: \(task.title)")
     }
-    .padding(.horizontal, 14).frame(height: 64)
+    .padding(.horizontal, 14).frame(height: 52)
     .background(
       selection == task.id ? Color.blue.opacity(0.16) : Color.panel,
       in: RoundedRectangle(cornerRadius: 10)
