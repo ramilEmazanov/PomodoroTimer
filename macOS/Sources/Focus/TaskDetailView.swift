@@ -18,7 +18,7 @@ struct TaskDetailView: View {
             }
             EditableTaskTitle(
               title: task.title, completed: task.isCompleted,
-              font: .system(size: 22, weight: .semibold), label: "Task title"
+              font: .system(size: 24, weight: .semibold), label: "Task title"
             ) { title in
               state.editTask(task.id) { $0.title = title }
             }
@@ -36,7 +36,7 @@ struct TaskDetailView: View {
               FocusHistory.display(state.focusedSeconds(taskID: task.id)) + " focused",
               systemImage: "timer"
             )
-            .font(.system(size: 16, weight: .medium)).monospacedDigit()
+            .font(.system(size: 18, weight: .medium)).monospacedDigit()
             Button("Set timer for this task") { state.prepareTimer(for: task.id) }
               .buttonStyle(.borderless).disabled(state.saved.active != nil || task.isCompleted)
             Picker(
@@ -61,7 +61,7 @@ struct TaskDetailView: View {
                   state.editSubtask(subtask.id, in: task.id) { $0.isCompleted.toggle() }
                 }
                 EditableTaskTitle(
-                  title: subtask.title, completed: subtask.isCompleted, font: .system(size: 14),
+                  title: subtask.title, completed: subtask.isCompleted, font: .system(size: 16),
                   label: "Subtask title"
                 ) { title in
                   state.editSubtask(subtask.id, in: task.id) { $0.title = title }
@@ -91,14 +91,14 @@ struct TaskDetailView: View {
             .padding(.vertical, 8)
             if !task.subtasks.isEmpty {
               Text("\(task.completedSteps) of \(task.subtasks.count) steps completed")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .font(.system(size: 13)).foregroundStyle(.secondary)
             }
           }
           Divider()
           VStack(alignment: .leading, spacing: 14) {
             if let date = task.dueDate {
               HStack {
-                Label("Due date", systemImage: "calendar").font(.system(size: 13, weight: .medium))
+                Label("Due date", systemImage: "calendar").font(.system(size: 15, weight: .medium))
                 Spacer()
                 Button {
                   state.editTask(task.id) { $0.dueDate = nil }
@@ -117,7 +117,7 @@ struct TaskDetailView: View {
               )
               .labelsHidden().datePickerStyle(.field)
               if task.isOverdue(at: state.now) {
-                Label("Overdue", systemImage: "exclamationmark.circle").font(.system(size: 12))
+                Label("Overdue", systemImage: "exclamationmark.circle").font(.system(size: 14))
                   .foregroundStyle(.red)
               }
             } else {
@@ -131,18 +131,19 @@ struct TaskDetailView: View {
           }
           Divider()
           VStack(alignment: .leading, spacing: 12) {
-            Label("Note", systemImage: "note.text").font(.system(size: 13, weight: .medium))
+            Label("Note", systemImage: "note.text").font(.system(size: 15, weight: .medium))
               .foregroundStyle(.secondary)
             ZStack(alignment: .topLeading) {
               if task.note.isEmpty {
                 Text("Add a note…").foregroundStyle(.tertiary).padding(.top, 8).padding(.leading, 5)
+                  .font(.system(size: 16))
                   .allowsHitTesting(false)
               }
               TextEditor(
                 text: Binding(
                   get: { task.note }, set: { value in state.editTask(task.id) { $0.note = value } })
               )
-              .font(.system(size: 14)).scrollContentBackground(.hidden)
+              .font(.system(size: 16)).scrollContentBackground(.hidden)
               .frame(minHeight: 180).accessibilityLabel("Task note")
             }
           }
@@ -152,7 +153,7 @@ struct TaskDetailView: View {
       Divider()
       HStack(spacing: 12) {
         Text("Created \(task.createdAt.formatted(date: .abbreviated, time: .omitted))")
-          .font(.system(size: 11)).foregroundStyle(.secondary)
+          .font(.system(size: 13)).foregroundStyle(.secondary)
         Spacer()
         Button(role: .destructive, action: { confirmDeletion = true }) {
           Image(systemName: "trash")
@@ -161,6 +162,7 @@ struct TaskDetailView: View {
       }
       .padding(20)
     }
+    .font(.system(size: 15))
     .alert("Delete task?", isPresented: $confirmDeletion) {
       Button("Cancel", role: .cancel) {}
       Button("Delete", role: .destructive, action: requestDelete)
