@@ -12,12 +12,15 @@ struct FocusTask: Codable, Identifiable, Equatable {
   let createdAt: Date
   var updatedAt: Date
   var isCompleted = false
+  var completedAt: Date?
   var isImportant = false
   var dueDate: Date?
   var note = ""
   var subtasks: [FocusSubtask] = []
   var projectID: UUID?
+  var myDayAddedAt: Date?
 
+  var isInMyDay: Bool { myDayAddedAt != nil }
   var completedSteps: Int { subtasks.filter(\.isCompleted).count }
 
   func isOverdue(at date: Date, calendar: Calendar = .current) -> Bool {
@@ -36,6 +39,12 @@ enum TaskSort: String, CaseIterable, Identifiable {
   func sorted(_ tasks: [FocusTask]) -> [FocusTask] {
     tasks.sorted { left, right in
       if left.isCompleted != right.isCompleted { return !left.isCompleted }
+      if left.isCompleted {
+        let leftCompletion = left.completedAt ?? left.updatedAt
+        let rightCompletion = right.completedAt ?? right.updatedAt
+        if leftCompletion != rightCompletion { return leftCompletion > rightCompletion }
+        return left.id.uuidString < right.id.uuidString
+      }
       switch self {
       case .dueDate:
         if left.dueDate != right.dueDate {

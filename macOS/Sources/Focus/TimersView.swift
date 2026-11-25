@@ -7,14 +7,26 @@ struct TimersView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 28) {
       PageHeading(title: "Timers")
-      Surface {
-        Group {
-          if state.phase == .setup { setup } else { active }
+      ViewThatFits(in: .horizontal) {
+        HStack(alignment: .top, spacing: 28) {
+          timerPanel.frame(minWidth: 420, maxWidth: 560)
+          recents.frame(minWidth: 220, maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, minHeight: 360)
+        VStack(alignment: .leading, spacing: 28) {
+          timerPanel.frame(maxWidth: 560)
+          recents.frame(maxWidth: 560, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
       }
-      .frame(maxWidth: 560).frame(maxWidth: .infinity)
-      recents.frame(maxWidth: 560, alignment: .leading).frame(maxWidth: .infinity)
+    }
+  }
+
+  private var timerPanel: some View {
+    Surface {
+      Group {
+        if state.phase == .setup { setup } else { active }
+      }
+      .frame(maxWidth: .infinity, minHeight: 360)
     }
   }
 
@@ -22,7 +34,7 @@ struct TimersView: View {
     VStack(spacing: 16) {
       Picker("Task", selection: $state.timerTaskID) {
         Text("No task").tag(nil as UUID?)
-        ForEach(state.tasks) { task in
+        ForEach(state.timerTasks) { task in
           let project = state.projects.first { $0.id == task.projectID }
           Text(project.map { "\($0.title) / \(task.title)" } ?? task.title)
             .tag(Optional(task.id))
@@ -145,7 +157,7 @@ struct TimersView: View {
         ForEach(state.recents, id: \.self) { seconds in
           HStack {
             VStack(alignment: .leading, spacing: 5) {
-              Text(InterfaceState.time(seconds)).font(.system(size: 30, weight: .light))
+              Text(InterfaceState.time(seconds)).font(.system(size: 36, weight: .light))
                 .monospacedDigit()
               Text(InterfaceState.durationLabel(seconds)).font(.system(size: 12)).foregroundStyle(
                 .secondary)

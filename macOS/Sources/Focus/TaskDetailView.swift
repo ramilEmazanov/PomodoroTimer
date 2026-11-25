@@ -6,6 +6,8 @@ struct TaskDetailView: View {
   let requestDelete: () -> Void
   @State private var newStep = ""
   @State private var confirmDeletion = false
+  @State private var showDueDatePicker = false
+  @State private var draftDueDate = Date.now
   @FocusState private var stepFocused: Bool
 
   var body: some View {
@@ -18,7 +20,7 @@ struct TaskDetailView: View {
             }
             EditableTaskTitle(
               title: task.title, completed: task.isCompleted,
-              font: .system(size: 22, weight: .semibold), label: "Task title"
+              font: .system(size: 24, weight: .semibold), label: "Task title"
             ) { title in
               state.editTask(task.id) { $0.title = title }
             }
@@ -36,9 +38,9 @@ struct TaskDetailView: View {
               FocusHistory.display(state.focusedSeconds(taskID: task.id)) + " focused",
               systemImage: "timer"
             )
-            .font(.system(size: 16, weight: .medium)).monospacedDigit()
+            .font(.system(size: 18, weight: .medium)).monospacedDigit()
             Button("Set timer for this task") { state.prepareTimer(for: task.id) }
-              .buttonStyle(.borderless).disabled(state.saved.active != nil)
+              .buttonStyle(.borderless).disabled(state.saved.active != nil || task.isCompleted)
             Picker(
               "Project",
               selection: Binding(
@@ -61,7 +63,7 @@ struct TaskDetailView: View {
                   state.editSubtask(subtask.id, in: task.id) { $0.isCompleted.toggle() }
                 }
                 EditableTaskTitle(
-                  title: subtask.title, completed: subtask.isCompleted, font: .system(size: 14),
+                  title: subtask.title, completed: subtask.isCompleted, font: .system(size: 16),
                   label: "Subtask title"
                 ) { title in
                   state.editSubtask(subtask.id, in: task.id) { $0.title = title }
@@ -91,14 +93,51 @@ struct TaskDetailView: View {
             .padding(.vertical, 8)
             if !task.subtasks.isEmpty {
               Text("\(task.completedSteps) of \(task.subtasks.count) steps completed")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .font(.system(size: 13)).foregroundStyle(.secondary)
+            }
+          }
+          Divider()
+          HStack(spacing: 12) {
+            if task.isInMyDay {
+              Label("Added to My Day", systemImage: "sun.max")
+                .foregroundStyle(Color.blue)
+              Spacer(minLength: 8)
+              Button {
+                state.setMyDay(task.id, included: false)
+              } label: {
+                Image(systemName: "xmark").frame(width: 28, height: 28)
+                  .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain).foregroundStyle(.secondary)
+              .help("Remove from My Day").accessibilityLabel("Remove from My Day")
+            } else {
+              Button {
+                state.setMyDay(task.id, included: true)
+              } label: {
+                Label("Add to My Day", systemImage: "sun.max")
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                  .contentShape(Rectangle())
+              }
+              .buttonStyle(.plain).foregroundStyle(.secondary)
             }
           }
           Divider()
           VStack(alignment: .leading, spacing: 14) {
             if let date = task.dueDate {
               HStack {
-                Label("Due date", systemImage: "calendar").font(.system(size: 13, weight: .medium))
+                Label("Due date", systemImage: "calendar").font(.system(size: 15, weight: .medium))
+                  .foregroundStyle(.primary)
+                DatePicker(
+                  "Due date",
+                  selection: Binding(
+                    get: { date },
+                    set: { value in
+                      state.editTask(task.id) {
+                        $0.dueDate = Calendar.current.startOfDay(for: value)
+                      }
+                    }), displayedComponents: .date
+                )
+                .labelsHidden().datePickerStyle(.field).fixedSize()
                 Spacer()
                 Button {
                   state.editTask(task.id) { $0.dueDate = nil }
@@ -107,42 +146,56 @@ struct TaskDetailView: View {
                 }
                 .buttonStyle(.plain).help("Remove due date").accessibilityLabel("Remove due date")
               }
-              DatePicker(
-                "Due date",
-                selection: Binding(
-                  get: { date },
-                  set: { value in
-                    state.editTask(task.id) { $0.dueDate = Calendar.current.startOfDay(for: value) }
-                  }), displayedComponents: .date
-              )
-              .labelsHidden().datePickerStyle(.field)
               if task.isOverdue(at: state.now) {
-                Label("Overdue", systemImage: "exclamationmark.circle").font(.system(size: 12))
+                Label("Overdue", systemImage: "exclamationmark.circle").font(.system(size: 14))
                   .foregroundStyle(.red)
               }
             } else {
               Button {
-                state.editTask(task.id) { $0.dueDate = Calendar.current.startOfDay(for: state.now) }
+                draftDueDate = Calendar.current.startOfDay(for: state.now)
+                showDueDatePicker = true
               } label: {
                 Label("Add due date", systemImage: "calendar.badge.plus")
               }
               .buttonStyle(.borderless)
+              .popover(isPresented: $showDueDatePicker, arrowEdge: .bottom) {
+                VStack(spacing: 16) {
+                  DatePicker("Due date", selection: $draftDueDate, displayedComponents: .date)
+                    .datePickerStyle(.graphical).labelsHidden()
+                    .accessibilityLabel("Choose due date")
+                  Divider()
+                  HStack {
+                    Button("Cancel") { showDueDatePicker = false }
+                      .keyboardShortcut(.cancelAction)
+                    Spacer()
+                    Button("Add") {
+                      showDueDatePicker = false
+                      state.editTask(task.id) {
+                        $0.dueDate = Calendar.current.startOfDay(for: draftDueDate)
+                      }
+                    }
+                    .keyboardShortcut(.defaultAction)
+                  }
+                }
+                .padding(16).frame(width: 300)
+              }
             }
           }
           Divider()
           VStack(alignment: .leading, spacing: 12) {
-            Label("Note", systemImage: "note.text").font(.system(size: 13, weight: .medium))
-              .foregroundStyle(.secondary)
+            Label("Note", systemImage: "note.text").font(.system(size: 15, weight: .medium))
+              .foregroundStyle(.primary)
             ZStack(alignment: .topLeading) {
               if task.note.isEmpty {
-                Text("Add a note…").foregroundStyle(.tertiary).padding(.top, 8).padding(.leading, 5)
+                Text("Add a note…").foregroundStyle(.tertiary).padding(.leading, 5)
+                  .font(.system(size: 16))
                   .allowsHitTesting(false)
               }
               TextEditor(
                 text: Binding(
                   get: { task.note }, set: { value in state.editTask(task.id) { $0.note = value } })
               )
-              .font(.system(size: 14)).scrollContentBackground(.hidden)
+              .font(.system(size: 16)).scrollContentBackground(.hidden)
               .frame(minHeight: 180).accessibilityLabel("Task note")
             }
           }
@@ -152,7 +205,7 @@ struct TaskDetailView: View {
       Divider()
       HStack(spacing: 12) {
         Text("Created \(task.createdAt.formatted(date: .abbreviated, time: .omitted))")
-          .font(.system(size: 11)).foregroundStyle(.secondary)
+          .font(.system(size: 13)).foregroundStyle(.secondary)
         Spacer()
         Button(role: .destructive, action: { confirmDeletion = true }) {
           Image(systemName: "trash")
@@ -161,6 +214,7 @@ struct TaskDetailView: View {
       }
       .padding(20)
     }
+    .font(.system(size: 15))
     .alert("Delete task?", isPresented: $confirmDeletion) {
       Button("Cancel", role: .cancel) {}
       Button("Delete", role: .destructive, action: requestDelete)
@@ -173,6 +227,39 @@ struct TaskDetailView: View {
     if state.addSubtask(to: task.id, title: newStep) {
       newStep = ""
       stepFocused = true
+    }
+  }
+}
+
+struct TaskDetailSheet: View {
+  @Bindable var state: InterfaceState
+  let taskID: UUID?
+  let dismiss: () -> Void
+  @AppStorage(InterfaceZoom.storageKey) private var zoomPercentage = 100
+
+  var body: some View {
+    ZoomedInterface {
+      VStack(spacing: 0) {
+        HStack {
+          Text("Task details").font(.headline)
+          Spacer()
+          Button("Done", action: dismiss).keyboardShortcut(.cancelAction)
+        }
+        .padding(20)
+        Divider()
+        if let task = state.tasks.first(where: { $0.id == taskID }) {
+          TaskDetailView(state: state, task: task) { state.deleteTask(task.id) }
+            .id(task.id)
+        }
+      }
+      .background(Color.panel)
+    }
+    .frame(
+      width: 440 * InterfaceZoom.scale(for: zoomPercentage),
+      height: 640 * InterfaceZoom.scale(for: zoomPercentage)
+    )
+    .onChange(of: state.tasks.map(\.id)) { _, ids in
+      if let taskID, !ids.contains(taskID) { dismiss() }
     }
   }
 }

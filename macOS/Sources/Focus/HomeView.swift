@@ -2,6 +2,8 @@ import SwiftUI
 
 struct HomeView: View {
   @Bindable var state: InterfaceState
+  @State private var selectedTaskID: UUID?
+  @State private var deletion: FocusTask?
 
   var body: some View {
     VStack(alignment: .leading, spacing: 24) {
@@ -10,6 +12,7 @@ struct HomeView: View {
         Text(state.now.formatted(.dateTime.weekday(.wide).month(.wide).day()))
           .font(.system(size: 13)).foregroundStyle(.secondary)
       }
+      myDay
       if state.sessions.isEmpty && state.saved.active == nil {
         EmptyPanel(
           symbol: "scope", title: "Start your first session",
@@ -18,7 +21,7 @@ struct HomeView: View {
       } else {
         FocusSummary(state: state)
         Surface {
-          VStack(alignment: .leading, spacing: 20) {
+          VStack(alignment: .leading, spacing: 0) {
             HStack {
               Text("Recent sessions").font(.system(size: 20, weight: .semibold))
               Spacer()
@@ -44,6 +47,53 @@ struct HomeView: View {
         }
       }
     }
+    .sheet(
+      isPresented: Binding(
+        get: { selectedTaskID != nil },
+        set: { if !$0 { selectedTaskID = nil } }
+      )
+    ) {
+      TaskDetailSheet(state: state, taskID: selectedTaskID) { selectedTaskID = nil }
+    }
+    .alert(
+      "Delete task?",
+      isPresented: Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } }),
+      presenting: deletion
+    ) { task in
+      Button("Cancel", role: .cancel) { deletion = nil }
+      Button("Delete", role: .destructive) {
+        state.deleteTask(task.id)
+        deletion = nil
+      }
+    } message: { task in
+      Text("“\(task.title)” and its subtasks and note will be deleted.")
+    }
+  }
+
+  private var myDay: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      Label("My Day", systemImage: "sun.max")
+        .font(.system(size: 20, weight: .semibold))
+      if state.myDayTasks.isEmpty {
+        Text("Choose tasks to focus on and add them to My Day.")
+          .font(.system(size: 14)).foregroundStyle(.secondary)
+        Button("Choose tasks") { state.section = .tasks }
+          .buttonStyle(.borderless)
+      } else {
+        LazyVStack(spacing: 5) {
+          ForEach(state.myDayTasks) { task in
+            TaskRow(
+              state: state, task: task,
+              backgroundColor: .panel,
+              select: { selectedTaskID = task.id },
+              requestDelete: { deletion = $0 }
+            )
+            .id("\(task.id)-\(task.isCompleted)")
+          }
+        }
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 
@@ -72,13 +122,33 @@ struct FocusSummary: View {
   private func metric(_ title: String, _ value: String, _ note: String, accent: Bool = false)
     -> some View
   {
-    VStack(alignment: .leading, spacing: 12) {
-      Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+    SummaryMetric(title: title, value: value, note: note, accent: accent)
+  }
+}
+
+struct SummaryMetric: View {
+  let title: String
+  let value: String
+  var note: String? = nil
+  var accent = false
+  var markerColor: Color? = nil
+  var compact = false
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: compact ? 8 : 12) {
+      HStack(alignment: .top, spacing: 8) {
+        if let markerColor {
+          Capsule().fill(markerColor).frame(width: 4, height: 12)
+            .padding(.top, 2)
+            .accessibilityHidden(true)
+        }
+        Text(title).font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+      }
       Text(value).font(.system(size: 25, weight: .semibold)).tracking(-0.5).monospacedDigit()
-      Text(note).font(.system(size: 11)).foregroundStyle(.secondary)
+      if let note { Text(note).font(.system(size: 11)).foregroundStyle(.secondary) }
     }
-    .frame(minWidth: 155, maxWidth: .infinity, minHeight: 100, alignment: .leading)
-    .padding(20)
+    .frame(minWidth: 155, maxWidth: .infinity, minHeight: compact ? 68 : 100, alignment: .leading)
+    .padding(compact ? 16 : 20)
     .background(
       accent ? Color(light: 0xEDF6FF, dark: 0x233243) : Color.panel,
       in: RoundedRectangle(cornerRadius: 22))

@@ -6,32 +6,49 @@ struct TasksView: View {
   @State private var selection: UUID?
   @State private var newTitle = ""
   @State private var sort: TaskSort = .dueDate
-  @State private var filter: TaskFilter = .all
+  @State private var showCompletedTasks = false
   @State private var showCompactDetail = false
   @State private var deletion: FocusTask?
   @FocusState private var composerFocused: Bool
-
-  private enum TaskFilter: String, CaseIterable, Identifiable {
-    case all = "All tasks"
-    case active = "Active"
-    case completed = "Completed"
-    var id: Self { self }
-  }
 
   private var project: FocusProject? { state.projects.first { $0.id == projectID } }
   private var scopedTasks: [FocusTask] {
     state.tasks.filter { projectID == nil || $0.projectID == projectID }
   }
 
-  private var visibleTasks: [FocusTask] {
-    sort.sorted(
-      scopedTasks.filter { task in
-        switch filter {
-        case .all: true
-        case .active: !task.isCompleted
-        case .completed: task.isCompleted
-        }
-      })
+  private var activeTasks: [FocusTask] {
+    sort.sorted(scopedTasks.filter { !$0.isCompleted })
+  }
+
+  private var completedTasks: [FocusTask] {
+    sort.sorted(scopedTasks.filter(\.isCompleted))
+  }
+
+  private enum ListEntry: Identifiable {
+    case task(FocusTask)
+    case completedHeader
+
+    enum ID: Hashable {
+      // Recreate the row when it moves between active and completed tasks.
+      case task(UUID, completed: Bool)
+      case completedHeader
+    }
+
+    var id: ID {
+      switch self {
+      case .task(let task): .task(task.id, completed: task.isCompleted)
+      case .completedHeader: .completedHeader
+      }
+    }
+  }
+
+  private var listEntries: [ListEntry] {
+    var entries = activeTasks.map(ListEntry.task)
+    if !completedTasks.isEmpty {
+      entries.append(.completedHeader)
+      if showCompletedTasks { entries += completedTasks.map(ListEntry.task) }
+    }
+    return entries
   }
 
   private var selectedTask: FocusTask? { state.tasks.first { $0.id == selection } }
@@ -42,40 +59,21 @@ struct TasksView: View {
       HStack(spacing: 0) {
         taskList(compact: compact)
           .frame(maxWidth: .infinity, maxHeight: .infinity)
-        if !compact {
+        if !compact, let task = selectedTask {
           Divider()
-          Group {
-            if let task = selectedTask {
-              detail(task)
-            } else {
-              VStack(spacing: 12) {
-                Image(systemName: "checklist").font(.system(size: 34, weight: .light))
-                Text("Select a task").font(.headline)
-                Text("Its steps, due date and note will appear here.")
-                  .font(.callout).multilineTextAlignment(.center)
-              }
-              .foregroundStyle(.secondary).padding(28)
-              .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-          }
-          .frame(width: min(360, geometry.size.width * 0.42))
-          .background(Color.panel)
+          detail(task)
+            .frame(width: min(360, geometry.size.width * 0.42))
+            .background(Color.panel)
         }
       }
       .onChange(of: compact) { _, value in if !value { showCompactDetail = false } }
-      .sheet(isPresented: $showCompactDetail) {
-        VStack(spacing: 0) {
-          HStack {
-            Text("Task details").font(.headline)
-            Spacer()
-            Button("Done") { showCompactDetail = false }.keyboardShortcut(.cancelAction)
-          }
-          .padding(20)
-          Divider()
-          if let task = selectedTask { detail(task) }
+      .sheet(
+        isPresented: $showCompactDetail,
+        onDismiss: {
+          if compact { selection = nil }
         }
-        .frame(width: 440, height: 640)
-        .background(Color.panel)
+      ) {
+        TaskDetailSheet(state: state, taskID: selection) { showCompactDetail = false }
       }
     }
     .onChange(of: state.tasks.map(\.id)) { _, ids in
@@ -119,10 +117,6 @@ struct TasksView: View {
           .buttonStyle(.borderless).keyboardShortcut("n", modifiers: .command)
           .help("New task (⌘N)").accessibilityLabel("New task")
         }
-        Text(
-          "\(scopedTasks.filter { !$0.isCompleted }.count) active · \(scopedTasks.filter(\.isCompleted).count) completed"
-        )
-        .font(.system(size: 12)).foregroundStyle(.secondary)
         if let project {
           Label(
             FocusHistory.display(state.focusedSeconds(projectID: project.id)) + " focused",
@@ -140,10 +134,6 @@ struct TasksView: View {
           }
           .menuStyle(.borderlessButton).fixedSize()
           Spacer(minLength: 8)
-          Picker("Show tasks", selection: $filter) {
-            ForEach(TaskFilter.allCases) { Text($0.rawValue).tag($0) }
-          }
-          .labelsHidden().pickerStyle(.menu).fixedSize()
         }
         .font(.system(size: 12))
         if state.pendingTasks != nil {
@@ -155,36 +145,62 @@ struct TasksView: View {
         }
       }
       .padding(24)
-      ScrollView {
-        LazyVStack(spacing: 5) {
-          if visibleTasks.isEmpty {
-            VStack(spacing: 12) {
-              Image(systemName: "checklist")
-                .font(.system(size: 28, weight: .light))
-              Text(scopedTasks.isEmpty ? "Make room for what matters" : "No matching tasks").font(
-                .headline)
-              Text(
-                scopedTasks.isEmpty
-                  ? "Add your first task below, then break it into smaller steps."
-                  : "Try another task filter."
-              )
-              .font(.callout).multilineTextAlignment(.center)
+      GeometryReader { listGeometry in
+        ScrollView {
+          LazyVStack(spacing: 5) {
+            if scopedTasks.isEmpty {
+              VStack(spacing: 12) {
+                Image(systemName: "checklist")
+                  .font(.system(size: 28, weight: .light))
+                Text("Make room for what matters").font(.headline)
+                Text("Add your first task below, then break it into smaller steps.")
+                  .font(.callout).multilineTextAlignment(.center)
+              }
+              .foregroundStyle(.secondary).padding(.vertical, 48).padding(.horizontal, 16)
+              .frame(maxWidth: .infinity)
             }
-            .foregroundStyle(.secondary).padding(.vertical, 48).padding(.horizontal, 16)
-            .frame(maxWidth: .infinity)
-          }
-          ForEach(visibleTasks) { task in
-            taskRow(task) {
-              selection = task.id
-              if compact { showCompactDetail = true }
+            ForEach(listEntries) { entry in
+              switch entry {
+              case .task(let task):
+                taskRow(task) {
+                  selection = task.id
+                  if compact { showCompactDetail = true }
+                }
+              case .completedHeader:
+                Button {
+                  showCompletedTasks.toggle()
+                } label: {
+                  HStack(spacing: 6) {
+                    Image(systemName: showCompletedTasks ? "chevron.down" : "chevron.right")
+                      .font(.system(size: 10, weight: .semibold))
+                      .frame(width: 12)
+                    Text("Completed Tasks")
+                  }
+                  .font(.system(size: 12, weight: .medium))
+                  .padding(.horizontal, 8).padding(.vertical, 6)
+                  .background(Color.panel, in: RoundedRectangle(cornerRadius: 6))
+                  .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).foregroundStyle(Color.blue)
+                .accessibilityLabel("Completed Tasks")
+                .accessibilityValue(
+                  showCompletedTasks ? "Expanded" : "Collapsed"
+                )
+                .accessibilityHint("Show or hide completed tasks")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 12).padding(.bottom, 4)
+              }
             }
           }
+          .padding(.horizontal, 24).padding(.bottom, 16)
+          .frame(minHeight: listGeometry.size.height, alignment: .top)
+          .background(deselectionBackground)
         }
-        .padding(.horizontal, 24).padding(.bottom, 16)
       }
       Spacer(minLength: 0)
-      HStack(spacing: 10) {
+      HStack(spacing: 12) {
         Image(systemName: "plus").foregroundStyle(.blue)
+          .frame(width: 28, height: 30)
         TextField(project == nil ? "Add a task" : "Add a task to this project", text: $newTitle)
           .textFieldStyle(.plain).focused($composerFocused)
           .onSubmit { addTask(compact: compact) }
@@ -192,107 +208,61 @@ struct TasksView: View {
           .buttonStyle(.borderless)
           .disabled(newTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
       }
-      .padding(14).background(Color.panel, in: RoundedRectangle(cornerRadius: 12))
+      .font(.system(size: 15, weight: .medium))
+      .padding(.horizontal, 14).frame(height: 52)
+      .background(Color.panel, in: RoundedRectangle(cornerRadius: 10))
       .padding(24)
     }
+    .background(deselectionBackground)
+  }
+
+  private var deselectionBackground: some View {
+    Color.clear
+      .contentShape(Rectangle())
+      .onTapGesture {
+        selection = nil
+        showCompactDetail = false
+        composerFocused = false
+      }
   }
 
   private func addTask(compact: Bool) {
     guard let id = state.addTask(title: newTitle, projectID: projectID) else { return }
     selection = id
     newTitle = ""
-    filter = .all
     if compact { showCompactDetail = true }
   }
 
   private func taskRow(_ task: FocusTask, select: @escaping () -> Void) -> some View {
-    HStack(alignment: .center, spacing: 12) {
-      CompletionButton(completed: task.isCompleted, label: task.title) {
-        state.editTask(task.id) { $0.isCompleted.toggle() }
-      }
-      Button {
-        state.prepareTimer(for: task.id)
-      } label: {
-        Image(systemName: state.saved.active?.assignment?.taskID == task.id ? "timer" : "play.fill")
-          .font(.system(size: 12)).foregroundStyle(.blue)
-          .frame(width: 28, height: 30).contentShape(Rectangle())
-      }
-      .buttonStyle(.plain).disabled(state.saved.active != nil)
-      .help("Set timer for this task").accessibilityLabel("Set timer for \(task.title)")
-      Button(action: select) {
-        VStack(alignment: .leading, spacing: 3) {
-          Text(task.title).font(.system(size: 15, weight: .medium))
-            .strikethrough(task.isCompleted)
-            .foregroundStyle(task.isCompleted ? .secondary : .primary)
-            .lineLimit(2).multilineTextAlignment(.leading)
-          Text(FocusHistory.display(state.focusedSeconds(taskID: task.id)) + " focused")
-            .font(.system(size: 11)).foregroundStyle(.secondary).monospacedDigit()
-          if projectID == nil,
-            let project = state.projects.first(where: { $0.id == task.projectID })
-          {
-            Label(project.title, systemImage: "folder").font(.system(size: 11))
-              .foregroundStyle(.secondary).lineLimit(1)
-          }
-          if !task.subtasks.isEmpty || task.dueDate != nil || !task.note.isEmpty {
-            HStack(spacing: 8) {
-              if !task.subtasks.isEmpty {
-                Text("\(task.completedSteps) of \(task.subtasks.count)")
-              }
-              if let date = task.dueDate {
-                Label(date.formatted(.dateTime.day().month(.abbreviated)), systemImage: "calendar")
-                  .foregroundStyle(task.isOverdue(at: state.now) ? Color.red : .secondary)
-              }
-              if !task.note.isEmpty {
-                Image(systemName: "note.text").accessibilityLabel("Has a note")
-              }
-            }
-            .font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
-          }
-        }
-        .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
-        .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Open task: \(task.title)")
-      Button {
-        state.editTask(task.id) { $0.isImportant.toggle() }
-      } label: {
-        Image(systemName: task.isImportant ? "star.fill" : "star")
-          .font(.system(size: 14))
-          .frame(width: 24, height: 30)
-          .contentShape(Rectangle())
-          .foregroundStyle(task.isImportant ? Color.blue : .secondary)
-      }
-      .buttonStyle(.plain)
-      .help(task.isImportant ? "Remove importance" : "Mark important")
-      .accessibilityLabel("\(task.isImportant ? "Unmark" : "Mark") important: \(task.title)")
-    }
-    .padding(.horizontal, 14).padding(.vertical, 6)
-    .background(
-      selection == task.id ? Color.blue.opacity(0.16) : Color.panel,
-      in: RoundedRectangle(cornerRadius: 10)
+    TaskRow(
+      state: state, task: task, isSelected: selection == task.id,
+      showProject: projectID == nil, select: select,
+      requestDelete: { deletion = $0 }
     )
-    .contextMenu {
-      Button(task.isCompleted ? "Mark incomplete" : "Mark complete") {
-        state.editTask(task.id) { $0.isCompleted.toggle() }
-      }
-      Button("Delete task…", role: .destructive) { deletion = task }
-    }
   }
+
 }
 
 struct CompletionButton: View {
   let completed: Bool
   let label: String
   var small = false
+  var symbolSize: CGFloat = 23
   let action: () -> Void
   var body: some View {
     Button(action: action) {
-      Image(systemName: completed ? "checkmark.circle.fill" : "circle")
-        .font(.system(size: small ? 19 : 23, weight: .regular))
-        .foregroundStyle(completed ? Color.blue : .secondary)
-        .frame(width: small ? 24 : 28, height: 30)
-        .contentShape(Rectangle())
+      Group {
+        if completed {
+          Image(systemName: "checkmark.circle.fill")
+            .foregroundStyle(Color.blue)
+        } else {
+          Image(systemName: "circle")
+            .foregroundStyle(.secondary)
+        }
+      }
+      .font(.system(size: small ? 19 : symbolSize, weight: .regular))
+      .frame(width: small ? 24 : 28, height: 30)
+      .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .accessibilityLabel("\(completed ? "Mark incomplete" : "Complete"): \(label)")

@@ -17,6 +17,143 @@ private final class TaskTestStore: FocusStorage {
 
 @MainActor
 struct TasksTests {
+  @Test func completedTaskCountsRespectPeriodsAndReopening() throws {
+    let calendar = Calendar(identifier: .gregorian)
+    let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_800_000_000))
+    let day = try #require(calendar.dateInterval(of: .day, for: today))
+    let earlier = today.addingTimeInterval(-60)
+    var instant = earlier
+    let state = InterfaceState(store: TaskTestStore(), clock: { instant })
+    let oldTask = try #require(state.addTask(title: "Earlier"))
+    state.editTask(oldTask) { $0.isCompleted = true }
+    instant = today
+    let currentTask = try #require(state.addTask(title: "Today"))
+    state.editTask(currentTask) { $0.isCompleted = true }
+    _ = state.addTask(title: "Still active")
+    instant = day.end
+    let nextTask = try #require(state.addTask(title: "Next day"))
+    state.editTask(nextTask) { $0.isCompleted = true }
+    #expect(state.completedTaskCount() == 3)
+    #expect(state.completedTaskCount(in: day) == 1)
+    state.editTask(oldTask) { $0.note = "Edited today" }
+    #expect(state.completedTaskCount(in: day) == 1)
+    state.editTask(currentTask) { $0.isCompleted = false }
+    #expect(state.completedTaskCount() == 2)
+    #expect(state.completedTaskCount(in: day) == 0)
+  }
+
+  @Test func myDaySurvivesRestartAndCanBeRemovedWithoutDeletingTask() throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appending(path: "focus.sqlite")
+    let state = InterfaceState(store: try SQLiteFocusStore(url: url))
+    let project = try #require(state.addProject(title: "Project"))
+    let chosen = try #require(state.addTask(title: "Chosen", projectID: project))
+    let other = try #require(state.addTask(title: "Other"))
+    #expect(state.myDayTasks.isEmpty)
+    state.setMyDay(chosen, included: true)
+    let addedAt = try #require(state.tasks.first { $0.id == chosen }?.myDayAddedAt)
+    state.setMyDay(chosen, included: true)
+    #expect(state.tasks.first { $0.id == chosen }?.myDayAddedAt == addedAt)
+    state.editTask(chosen) { $0.isCompleted = true }
+
+    let restored = InterfaceState(store: try SQLiteFocusStore(url: url))
+    #expect(restored.myDayTasks.map(\.id) == [chosen])
+    #expect(restored.myDayTasks.first?.isCompleted == true)
+    #expect(restored.myDayTasks.first?.projectID == project)
+    #expect(restored.tasks.first { $0.id == other }?.isInMyDay == false)
+    restored.setMyDay(chosen, included: false)
+    #expect(restored.myDayTasks.isEmpty)
+    #expect(restored.tasks.count == 2)
+    let again = InterfaceState(store: try SQLiteFocusStore(url: url))
+    #expect(again.myDayTasks.isEmpty)
+    #expect(again.tasks.first { $0.id == chosen }?.isCompleted == true)
+    again.setMyDay(chosen, included: true)
+    again.deleteTask(chosen)
+    #expect(again.myDayTasks.isEmpty)
+  }
+
+  @Test func myDayChangesRemainVisibleAfterStorageFailureAndRetry() throws {
+    let store = TaskTestStore()
+    let state = InterfaceState(store: store)
+    let task = try #require(state.addTask(title: "My task"))
+    store.fail = true
+    state.setMyDay(task, included: true)
+    #expect(state.myDayTasks.map(\.id) == [task])
+    #expect(store.state.tasks.first?.isInMyDay == false)
+    #expect(state.pendingTasks != nil)
+    store.fail = false
+    state.retryStorage()
+    #expect(state.pendingTasks == nil)
+    #expect(InterfaceState(store: store).myDayTasks.map(\.id) == [task])
+    store.fail = true
+    state.setMyDay(task, included: false)
+    #expect(state.myDayTasks.isEmpty)
+    store.fail = false
+    state.retryStorage()
+    #expect(InterfaceState(store: store).myDayTasks.isEmpty)
+  }
+
+  @Test func tasksWithoutMyDayFieldDecodeAsNotSelected() throws {
+    let date = Date(timeIntervalSince1970: 1_800_000_000)
+    let task = FocusTask(id: UUID(), title: "Existing task", createdAt: date, updatedAt: date)
+    var object = try #require(
+      JSONSerialization.jsonObject(with: JSONEncoder().encode(task)) as? [String: Any])
+    object.removeValue(forKey: "myDayAddedAt")
+    let decoded = try JSONDecoder().decode(
+      FocusTask.self, from: JSONSerialization.data(withJSONObject: object))
+    #expect(!decoded.isInMyDay)
+    #expect(decoded == task)
+  }
+
+  @Test func completionOrderSurvivesEditsRestartAndRecompletion() throws {
+    let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appending(path: "focus.sqlite")
+    var instant = Date(timeIntervalSince1970: 1_800_000_000)
+    let state = InterfaceState(store: try SQLiteFocusStore(url: url), clock: { instant })
+    let first = try #require(state.addTask(title: "A"))
+    let second = try #require(state.addTask(title: "Z"))
+    state.editTask(first) { $0.isCompleted = true }
+    let firstCompletion = instant
+    instant += 60
+    state.editTask(second) { $0.isCompleted = true }
+    instant += 60
+    state.editTask(first) { $0.note = "Edited after completion" }
+    #expect(state.tasks.first { $0.id == first }?.completedAt == firstCompletion)
+    for sort in TaskSort.allCases {
+      #expect(sort.sorted(state.tasks).map(\.id) == [second, first])
+    }
+
+    let restored = InterfaceState(store: try SQLiteFocusStore(url: url), clock: { instant })
+    #expect(TaskSort.dueDate.sorted(restored.tasks).map(\.id) == [second, first])
+    #expect(restored.tasks.first { $0.id == first }?.completedAt == firstCompletion)
+    restored.editTask(first) { $0.isCompleted = false }
+    #expect(restored.tasks.first { $0.id == first }?.completedAt == nil)
+    instant += 60
+    restored.editTask(first) { $0.isCompleted = true }
+    #expect(restored.tasks.first { $0.id == first }?.completedAt == instant)
+    #expect(TaskSort.dueDate.sorted(restored.tasks).map(\.id) == [first, second])
+  }
+
+  @Test func legacyCompletedTasksUseLastUpdateUntilRecompleted() throws {
+    let date = Date(timeIntervalSince1970: 1_800_000_000)
+    var legacy = FocusTask(id: UUID(), title: "Legacy", createdAt: date, updatedAt: date)
+    legacy.isCompleted = true
+    let data = try JSONEncoder().encode(legacy)
+    let decoded = try JSONDecoder().decode(FocusTask.self, from: data)
+    #expect(decoded.completedAt == nil)
+    let store = TaskTestStore()
+    store.state.tasks = [decoded]
+    let state = InterfaceState(store: store, clock: { date.addingTimeInterval(60) })
+    state.editTask(legacy.id) { $0.note = "New note" }
+    #expect(state.tasks.first?.completedAt == date)
+    let recent = FocusTask(
+      id: UUID(), title: "Recent", createdAt: date, updatedAt: date.addingTimeInterval(30),
+      isCompleted: true)
+    #expect(TaskSort.title.sorted([decoded, recent]).map(\.id) == [recent.id, decoded.id])
+  }
+
   @Test func tasksAndSubtasksSurviveSQLiteRestartAndCanBeEditedAndDeleted() throws {
     let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }

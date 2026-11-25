@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkspaceView: View {
   @Bindable var state: InterfaceState
   @Environment(\.scenePhase) private var scenePhase
+  @AppStorage(InterfaceZoom.storageKey) private var zoomPercentage = 100
 
   var body: some View {
     HStack(spacing: 0) {
@@ -109,6 +110,19 @@ struct WorkspaceView: View {
       Surface {
         VStack(alignment: .leading, spacing: 20) {
           Toggle("Dark mode", isOn: $state.dark).toggleStyle(.switch)
+          Divider()
+          HStack {
+            Picker("Interface scale", selection: $zoomPercentage) {
+              ForEach(InterfaceZoom.percentages, id: \.self) { percentage in
+                Text("\(percentage)%").tag(percentage)
+              }
+            }
+            .pickerStyle(.menu)
+            Button("Reset") { zoomPercentage = 100 }
+              .disabled(zoomPercentage == 100)
+          }
+          Text("Zoom with ⌘+ and ⌘−. Return to 100% with ⌘0.")
+            .font(.system(size: 12)).foregroundStyle(.secondary)
           Divider()
           Label("Local storage", systemImage: "internaldrive").font(.headline)
           Text("Your sessions, timer and preferences are saved automatically on this Mac.")

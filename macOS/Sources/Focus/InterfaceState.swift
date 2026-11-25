@@ -100,7 +100,7 @@ final class InterfaceState {
     guard (1...86399).contains(value) else { return }
     let instant = clock()
     var candidate = saved
-    let task = tasks.first { $0.id == timerTaskID }
+    let task = timerTasks.first { $0.id == timerTaskID }
     let assignment = task.map { task in
       FocusAssignment(
         taskID: task.id, taskTitle: task.title, projectID: task.projectID,
@@ -153,9 +153,19 @@ final class InterfaceState {
   }
 
   func refresh(retry: Bool = false) {
-    now = clock()
+    let instant = clock()
+    let dayChanged = !Calendar.current.isDate(now, inSameDayAs: instant)
+    if let active = saved.active, active.runningSince != nil {
+      if dayChanged || ceil(active.remaining(at: now)) != ceil(active.remaining(at: instant)) {
+        now = instant
+      }
+    } else if dayChanged {
+      now = instant
+    }
     guard storageError == nil || retry else { return }
-    guard let active = saved.active, let deadline = active.deadline, now >= deadline else { return }
+    guard let active = saved.active, let deadline = active.deadline, instant >= deadline else {
+      return
+    }
     var candidate = saved
     candidate.active = nil
     if commit(candidate, adding: [active.record(outcome: .completed, at: deadline)]) {
@@ -208,6 +218,25 @@ final class InterfaceState {
   }
 
   var tasks: [FocusTask] { pendingTasks ?? saved.tasks }
+  var timerTasks: [FocusTask] { tasks.filter { !$0.isCompleted } }
+  var myDayTasks: [FocusTask] { TaskSort.dueDate.sorted(tasks.filter(\.isInMyDay)) }
+
+  func completedTaskCount(in range: DateInterval? = nil) -> Int {
+    tasks.filter { task in
+      guard task.isCompleted else { return false }
+      guard let range else { return true }
+      let completion = task.completedAt ?? task.updatedAt
+      return completion >= range.start && completion < range.end
+    }.count
+  }
+
+  func setMyDay(_ taskID: UUID, included: Bool) {
+    guard let task = tasks.first(where: { $0.id == taskID }), task.isInMyDay != included else {
+      return
+    }
+    let addedAt = included ? clock() : nil
+    editTask(taskID) { $0.myDayAddedAt = addedAt }
+  }
 
   @discardableResult
   func addTask(title: String, projectID: UUID? = nil) -> UUID? {
@@ -234,7 +263,15 @@ final class InterfaceState {
     else { return }
     updated[index].title = title
     guard updated[index] != tasks[index] else { return }
-    updated[index].updatedAt = clock()
+    let instant = clock()
+    if updated[index].isCompleted {
+      updated[index].completedAt =
+        tasks[index].isCompleted
+        ? tasks[index].completedAt ?? tasks[index].updatedAt : instant
+    } else {
+      updated[index].completedAt = nil
+    }
+    updated[index].updatedAt = instant
     saveTasks(updated)
   }
 
@@ -266,6 +303,9 @@ final class InterfaceState {
   private func saveTasks(_ tasks: [FocusTask]) {
     // Retain unsaved edits on screen if disk writes fail; Retry storage commits them later.
     pendingTasks = tasks
+    if let timerTaskID, !tasks.contains(where: { $0.id == timerTaskID && !$0.isCompleted }) {
+      self.timerTaskID = nil
+    }
     _ = commit(saved)
   }
 
@@ -304,7 +344,7 @@ final class InterfaceState {
   }
 
   func prepareTimer(for taskID: UUID) {
-    guard saved.active == nil, tasks.contains(where: { $0.id == taskID }) else { return }
+    guard saved.active == nil, timerTasks.contains(where: { $0.id == taskID }) else { return }
     timerTaskID = taskID
     if phase == .finished { phase = .setup }
     section = .timer

@@ -26,6 +26,47 @@ private final class ProjectStore: FocusStorage {
 
 @MainActor
 struct ProjectsTests {
+  @Test func completedTasksAreExcludedFromTimerSelection() throws {
+    let state = InterfaceState(store: ProjectStore())
+    let active = try #require(state.addTask(title: "Active"))
+    let completed = try #require(state.addTask(title: "Completed"))
+    state.prepareTimer(for: completed)
+    state.editTask(completed) { $0.isCompleted = true }
+    #expect(state.timerTaskID == nil)
+    #expect(state.timerTasks.map(\.id) == [active])
+
+    state.section = .tasks
+    state.prepareTimer(for: completed)
+    #expect(state.timerTaskID == nil)
+    #expect(state.section == .tasks)
+
+    state.timerTaskID = completed
+    state.start(60)
+    #expect(state.saved.active?.assignment == nil)
+    state.reset()
+
+    state.editTask(completed) { $0.isCompleted = false }
+    #expect(state.timerTasks.contains { $0.id == completed })
+    state.prepareTimer(for: completed)
+    #expect(state.timerTaskID == completed)
+  }
+
+  @Test func completingTaskKeepsRunningTimerAssignment() throws {
+    let clock = ProjectClock()
+    let state = InterfaceState(store: ProjectStore(), clock: { clock.now })
+    let task = try #require(state.addTask(title: "Task"))
+    state.prepareTimer(for: task)
+    state.start(60)
+    state.editTask(task) { $0.isCompleted = true }
+    #expect(state.timerTasks.isEmpty)
+    #expect(state.timerTaskID == nil)
+    #expect(state.saved.active?.assignment?.taskID == task)
+    clock.advance(60)
+    state.refresh()
+    #expect(state.sessions.first?.assignment?.taskID == task)
+    #expect(state.focusedSeconds(taskID: task) == 60)
+  }
+
   @Test func projectsTasksSubtasksAndActiveAssignmentSurviveRestart() throws {
     let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: directory) }

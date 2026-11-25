@@ -98,11 +98,6 @@ struct ProjectsView: View {
                 Image(systemName: "folder").font(.system(size: 22)).foregroundStyle(.blue)
                 VStack(alignment: .leading, spacing: 6) {
                   Text(project.title).font(.system(size: 18, weight: .semibold)).lineLimit(2)
-                  let tasks = state.tasks.filter { $0.projectID == project.id }
-                  Text(
-                    "\(tasks.filter { !$0.isCompleted }.count) active · \(tasks.filter(\.isCompleted).count) completed"
-                  )
-                  .font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 12)
                 Text(FocusHistory.display(state.focusedSeconds(projectID: project.id)))

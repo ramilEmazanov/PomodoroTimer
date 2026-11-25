@@ -8,15 +8,16 @@ struct DurationWheel: View {
   @State private var position: Int?
 
   var body: some View {
-    HStack(spacing: 4) {
+    HStack(spacing: 2) {
       ScrollView(.vertical) {
         LazyVStack(spacing: 0) {
           ForEach(0...maximum, id: \.self) { value in
             Text("\(value)")
-              .font(.system(size: 28, weight: .medium, design: .rounded))
+              .font(.system(size: 28, weight: .regular, design: .rounded))
               .monospacedDigit()
               .foregroundStyle(value == position ? Color.primary : Color.secondary)
-              .frame(maxWidth: .infinity).frame(height: 40)
+              .frame(maxWidth: .infinity, alignment: .trailing)
+              .padding(.trailing, 2).frame(height: 40)
               .contentShape(Rectangle())
               .onTapGesture { position = value }
               .id(value)

@@ -3,68 +3,80 @@ import SwiftUI
 
 struct StatisticsView: View {
   let state: InterfaceState
-  @State private var days = 7
+  @State private var period: FocusChartPeriod = .daily
   @State private var pageSize = 20
 
-  private struct Day: Identifiable {
-    let date: Date
+  private struct ProjectFocus: Identifiable {
+    let project: FocusProject
     let seconds: TimeInterval
-    var id: Date { date }
+    var id: UUID { project.id }
   }
 
-  private var buckets: [Day] {
-    let calendar = Calendar.current
-    let today = calendar.startOfDay(for: state.now)
-    return (0..<days).reversed().compactMap { offset in
-      guard let date = calendar.date(byAdding: .day, value: -offset, to: today),
-        let interval = calendar.dateInterval(of: .day, for: date)
-      else { return nil }
-      return Day(date: date, seconds: state.history.focusedSeconds(in: interval))
+  private var projectFocus: [ProjectFocus] {
+    state.projects.map { project in
+      ProjectFocus(project: project, seconds: state.focusedSeconds(projectID: project.id))
+    }
+    .sorted { left, right in
+      if left.seconds != right.seconds { return left.seconds > right.seconds }
+      let comparison = left.project.title.localizedStandardCompare(right.project.title)
+      if comparison != .orderedSame { return comparison == .orderedAscending }
+      return left.id.uuidString < right.id.uuidString
     }
   }
 
-  private var range: DateInterval {
-    DateInterval(start: buckets.first?.date ?? state.now, end: state.now.addingTimeInterval(0.001))
+  private var axisFormat: Date.FormatStyle {
+    switch period {
+    case .daily, .weekly: .dateTime.day().month(.abbreviated)
+    case .monthly: .dateTime.month(.abbreviated)
+    case .yearly: .dateTime.year()
+    }
   }
 
-  private var records: [FocusSession] {
-    state.sessions.filter { $0.endedAt >= range.start && $0.endedAt <= state.now }
-  }
+  private var chartUnit: String { period == .daily ? "Minutes" : "Hours" }
+  private var secondsPerUnit: Double { period == .daily ? 60 : 3600 }
 
   var body: some View {
+    let snapshot = FocusStatisticsSnapshot(history: state.history, period: period)
     VStack(alignment: .leading, spacing: 24) {
       PageHeading(
         title: "Statistics", subtitle: "Your focus time, session history and daily progress.")
-      FocusSummary(state: state)
+      StatisticsSummary(state: state)
       Surface {
         VStack(alignment: .leading, spacing: 22) {
-          HStack {
-            Text("Daily focus").font(.system(size: 20, weight: .semibold))
-            Spacer()
-            Picker("Period", selection: $days) {
-              Text("7 days").tag(7)
-              Text("30 days").tag(30)
+          ViewThatFits(in: .horizontal) {
+            HStack {
+              Text("Focus Time Chart").font(.system(size: 20, weight: .semibold))
+              Spacer()
+              periodPicker.frame(width: 300)
             }
-            .pickerStyle(.segmented).frame(width: 180)
-            .onChange(of: days) { _, _ in pageSize = 20 }
+            VStack(alignment: .leading, spacing: 12) {
+              Text("Focus Time Chart").font(.system(size: 20, weight: .semibold))
+              periodPicker.frame(maxWidth: 360)
+            }
           }
+          Text(period.rangeLabel).font(.system(size: 12)).foregroundStyle(.secondary)
           HStack(spacing: 24) {
-            Text(FocusHistory.display(state.history.focusedSeconds(in: range)))
+            Text(FocusHistory.display(snapshot.totalSeconds))
               .font(.system(size: 28, weight: .semibold)).monospacedDigit()
-            Text("\(state.history.completed(in: range)) completed sessions").foregroundStyle(
+            Text("\(snapshot.completedSessions) completed sessions").foregroundStyle(
               .secondary)
           }
-          Chart(buckets) { day in
-            BarMark(x: .value("Day", day.date, unit: .day), y: .value("Minutes", day.seconds / 60))
-              .foregroundStyle(.blue).cornerRadius(4)
-              .accessibilityLabel(day.date.formatted(date: .abbreviated, time: .omitted))
-              .accessibilityValue(FocusHistory.display(day.seconds))
+          Chart(snapshot.buckets) { bucket in
+            BarMark(
+              x: .value("Period", bucket.date, unit: period.component),
+              y: .value(chartUnit, bucket.seconds / secondsPerUnit)
+            )
+            .foregroundStyle(.blue).cornerRadius(4)
+            .accessibilityLabel(bucket.date.formatted(date: .abbreviated, time: .omitted))
+            .accessibilityValue(FocusHistory.display(bucket.seconds))
           }
-          .chartYScale(domain: 0...max(1, (buckets.map(\.seconds).max() ?? 0) / 60 * 1.1))
-          .chartYAxisLabel("Minutes")
+          .chartYScale(
+            domain: 0...max(1, (snapshot.buckets.map(\.seconds).max() ?? 0) / secondsPerUnit * 1.1)
+          )
+          .chartYAxisLabel(chartUnit)
           .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: days == 7 ? 1 : 5)) { _ in
-              AxisValueLabel(format: .dateTime.day().month(.abbreviated))
+            AxisMarks(values: snapshot.buckets.map(\.date)) { _ in
+              AxisValueLabel(format: axisFormat)
             }
           }
           .frame(height: 230)
@@ -74,21 +86,64 @@ struct StatisticsView: View {
           .font(.system(size: 12)).foregroundStyle(.secondary)
         }
       }
+      projectsFocus
       Surface {
         VStack(alignment: .leading, spacing: 16) {
           Text("Session history").font(.system(size: 20, weight: .semibold))
-          if records.isEmpty {
+          if snapshot.records.isEmpty {
             Text("No sessions in this period. Start a timer to begin tracking your focus.")
               .foregroundStyle(.secondary)
           } else {
-            SessionHistoryList(sessions: Array(records.prefix(pageSize)))
-            if records.count > pageSize {
+            SessionHistoryList(sessions: Array(snapshot.records.prefix(pageSize)))
+            if snapshot.records.count > pageSize {
               Button("Show more sessions") { pageSize += 20 }.buttonStyle(
                 ActionStyle(prominent: false))
             }
           }
         }
       }
+    }
+  }
+
+  private var periodPicker: some View {
+    Picker("Period", selection: $period) {
+      ForEach(FocusChartPeriod.allCases) { Text($0.rawValue).tag($0) }
+    }
+    .pickerStyle(.segmented)
+    .onChange(of: period) { _, _ in pageSize = 20 }
+  }
+
+  private var projectsFocus: some View {
+    Surface {
+      VStack(alignment: .leading, spacing: 16) {
+        HStack {
+          Text("Projects Focus").font(.system(size: 20, weight: .semibold))
+          Spacer()
+          Text("All time").font(.system(size: 12)).foregroundStyle(.secondary)
+        }
+        if state.projects.isEmpty {
+          Text("Create a project and focus on its tasks to see time spent here.")
+            .font(.system(size: 14)).foregroundStyle(.secondary)
+        } else {
+          VStack(spacing: 0) {
+            ForEach(Array(projectFocus.enumerated()), id: \.element.id) { index, total in
+              if index > 0 { Divider() }
+              HStack(spacing: 12) {
+                Image(systemName: "folder").foregroundStyle(.blue)
+                  .frame(width: 24)
+                Text(total.project.title).font(.system(size: 20, weight: .medium))
+                  .lineLimit(2).help(total.project.title)
+                Spacer(minLength: 16)
+                Text(FocusHistory.display(total.seconds))
+                  .font(.system(size: 20, weight: .medium)).monospacedDigit().fixedSize()
+              }
+              .padding(.vertical, 12)
+              .accessibilityElement(children: .combine)
+            }
+          }
+        }
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
     }
   }
 }
